@@ -130,16 +130,10 @@ Every ingester — URL crawler, Figma reader, vision-on-image, PDF parser,
 video frame sampler — produces the same structured shape. This is the only
 contract the rest of stardust depends on.
 
-```
-design-facts:
-  layout_grammar:    { primary, secondary, rhythm }
-  type_system:       { display, body, scale, tone }
-  palette:           { roles[], temperature, contrast }
-  motion_personality: { ... }
-  image_strategy:    { ... }
-  tone_signals:      [ ... ]
-  observed_moves:    [ move-id, ... ]
-```
+The shape is **specified in [`design-facts.md`](./design-facts.md)** (v1
+locked). Summary: a descriptive block (layout_grammar, type_system, palette,
+motion_personality, image_strategy, tone_signals) plus a structured index
+(`observed_moves`, `brand_axes`) plus provenance.
 
 Filling this shape from a URL is what `extract` already does today (in spirit).
 Filling it from Figma, image, PDF, video is new ingestion plumbing — but the
@@ -256,13 +250,13 @@ All v0 open questions, with the resolved answer and a one-line rationale.
 
 ## What happens next
 
-- Pin the **`design-facts` shape** (§3) as a standalone spec — this is the
-  interface every future ingester depends on (URL crawler, Figma reader,
-  vision-on-image, PDF parser, video frame sampler).
+- ✅ **`design-facts` shape pinned** — see
+  [`design-facts.md`](./design-facts.md) (v1).
 - Add a `learning-system.md` in `reference/` describing **runtime behavior**
   (what stardust reads at `direct` and `prototype` time). This doc stays as
   the design rationale.
 - Extend `divergence-toolkit.md` to formalize the move schema in §1.
 - Land empty `stardust/exemplars/`, `stardust/captures/`, `stardust/critiques/`
   scaffolding with READMEs explaining contribution.
-- Open a separate session for **Figma-as-extract-source**, dependent on §3.
+- Open a separate session for **Figma-as-extract-source**, dependent on the
+  pinned `design-facts` shape.
