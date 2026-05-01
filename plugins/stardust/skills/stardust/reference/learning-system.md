@@ -91,14 +91,47 @@ add fields. The curator pass (out of band) handles abstraction.
 
 **Critiques** (per-redesign, when designer reviews proposals):
 
-One file per reviewed proposal, schema per `design/learning-system.md` §2,
-with `verdict` + `why` mandatory and `moves` populated from the proposal
-itself.
+One file per reviewed proposal (or per proposal set, for `comparative`),
+schema per `design/learning-system.md` §2, with `verdict` + `why` mandatory
+and `moves` populated from the proposal itself. Every critique entry MUST
+declare `critique_mode: quick | qualified | comparative | conversation`.
+
+Mode-specific required fields per `design/learning-system.md` §2a:
+
+- `quick`: verdict + 1–3 line `why`. Default.
+- `qualified`: adds `per_dimension`, `working_moves`, `failing_moves`,
+  `counterfactual`, `anchor_read`, `designer_context`.
+- `comparative`: applies to a *set*, not a proposal. Adds `subject`
+  (proposal ids), `ranking`, `differentiating_moves`, `designer_context`.
+  Stored at `stardust/critiques/<session>/comparative-<n>.yaml`.
+- `conversation`: adds `recording`, `transcript`, `extracted_entries[]`,
+  `designer_signoff`. The `extracted_entries` are written separately as
+  their own `quick` or `qualified` files and listed by id here.
 
 **Candidate moves** (when stardust observes an exemplar that uses a move
 not yet in `divergence-toolkit.md`): emit the candidate to
 `stardust/captures/candidates/<timestamp>-<id>.yaml` with `id` prefixed
 `candidate/`. Do not promote. Do not silently extend the catalog.
+
+## Runtime weighting by `critique_mode`
+
+When selecting anchors at `direct` time and when reading the corpus
+elsewhere, stardust weights entries by how the judgment was rendered:
+
+- `qualified` > `quick` for **anchor influence**. A `qualified` critique's
+  per-dimension assessment and counterfactual carry more useful signal than
+  a one-line `why`, so `qualified` entries rank higher in the anchor sort
+  when tag overlap is otherwise tied.
+- `comparative` entries **never anchor**. They contribute only to move
+  metadata at curator-pass time; runtime `direct` ignores them.
+- `conversation` entries themselves never anchor. Only their *signed-off
+  extracted entries* (which are stored as their own `quick` or `qualified`
+  files) participate in anchor selection.
+- `quick` entries are always eligible to anchor. They are the floor of the
+  system, not a lesser form.
+
+Mode is **not** an override of `verdict`. A `quick stunning` entry can
+still anchor when no `qualified stunning` exists in the qualifying set.
 
 ## Empty-corpus and small-corpus behavior
 
@@ -147,3 +180,11 @@ corpus size. The catalog is the floor; the corpus is the ceiling.
   go." A user override is permitted only by an explicit
   `--bypass-contract` flag passed to the prototype sub-command, recorded in
   the proposal's provenance.
+- Never auto-promote a `quick` critique to `qualified` (or vice versa).
+  Mode reflects how judgment was rendered; it is not a quality score the
+  curator can adjust.
+- Never let `comparative` entries enter the anchor pool. They update move
+  metadata only.
+- Never write a `conversation` entry's recording/transcript into the
+  corpus directly. Only signed-off extracted entries enter; the source
+  material stays adjacent for provenance.

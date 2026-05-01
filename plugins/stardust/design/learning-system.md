@@ -85,7 +85,8 @@ Two locations:
 - `stardust/exemplars/` — plugin-shipped, curated reference set.
 - `stardust/critiques/` — per-redesign, generated during a session.
 
-**Entry schema** (one YAML/MD file per exemplar):
+**Entry schema** (one YAML/MD file per exemplar; critique entries add
+`critique_mode` plus mode-specific fields per §2a):
 
 ```
 id:           tactile-chairs-2024
@@ -99,6 +100,7 @@ brand_axes:   [tactile, niche, editorial]
 designer:     <handle>
 why:          1–3 lines on what makes it work (or fail)
 anti_pattern: optional tag (e.g. "gradient-blob-hero")
+critique_mode: quick | qualified | comparative | conversation   # critiques only
 ```
 
 **`brand_axes` are open tags, not a fixed enum.** Designers describe brands
@@ -119,12 +121,104 @@ brand's* `brand_axes`, not by visual similarity. Surfaces ~3 `stunning` + 1
 are checked against exemplar tags so generated variants point back to real
 references.
 
-**Verdict + 1–3 line `why` is the maximum.** No essays. Depth comes from
-volume of entries, not length of any one entry.
+**Verdict + 1–3 line `why` is the maximum** *for the default (`quick`) mode.*
+No essays. Depth in `quick` comes from volume of entries, not length of any
+one entry. Other modes — `qualified`, `comparative`, `conversation` — trade
+volume for structured depth where it carries information; see §2a.
 
 ---
 
-## 3. The `design-facts` shape (shared interface)
+## 2a. Critique modes
+
+A single critique schema can't be both frictionless and qualified — the two
+pull in opposite directions. The corpus accepts **four modes**, recorded on
+each critique entry as `critique_mode`. The runtime weights them
+differently (per `reference/learning-system.md`); the curator pass treats
+them differently (per §6).
+
+### `quick` (default, ~30 seconds)
+
+Verdict + 1–3 lines of `why`. The schema in §2. Designed for high cadence
+and low friction. Most session critiques are `quick`.
+
+### `qualified` (opt-in, ~5–10 minutes)
+
+For proposals that merit depth. Adds the following fields:
+
+```
+critique_mode: qualified
+per_dimension:
+  layout:  <short note>
+  type:    <short note>
+  palette: <short note>
+  motion:  <short note>
+  image:   <short note>
+  tone:    <short note>
+working_moves:    [ move-id, ... ]    # moves that landed
+failing_moves:    [ move-id, ... ]    # moves that didn't land
+counterfactual:   "this would be stunning if ..."   # 1–2 lines
+anchor_read:      "appropriate" | "lazy" | "wrong-territory" + 1 line
+designer_context: "<perspective; e.g. editorial sensibility, type designer>"
+```
+
+Per-dimension assessment forces specificity (vague "feels generic" becomes
+locatable "type pairing reads generic; layout grammar is distinctive").
+Move attribution connects critique directly to the catalog.
+**Counterfactual is the highest-signal field** — most useful design
+critique hides in "this would be stunning if".
+
+### `comparative` (~2–5 minutes for a set)
+
+Designer reviews N proposals **together**, not one-by-one. Pairwise
+judgment is sharper than absolute and faster than running `qualified` per
+proposal.
+
+```
+critique_mode: comparative
+subject:        [ proposal-id, proposal-id, ... ]
+ranking:        [ best → worst, by id ]
+differentiating_moves: [ move-id, ... ]   # what actually distinguishes the set
+designer_context: "<perspective>"
+why:            1–3 lines on what the ranking turns on
+```
+
+Comparative critiques **do not anchor**. They update move metadata
+(`when_to_use` / `when_not_to_use`) in the moves catalog at curator-pass
+time.
+
+### `conversation` (~30 minutes, recorded)
+
+A designer + curator call. Most natural format for senior designers who
+prefer talking to writing. Trades writing burden for review burden.
+
+```
+critique_mode: conversation
+recording:        <ref or path>
+transcript:       <ref or path>
+extracted_entries: [ entry-id, ... ]   # quick or qualified entries derived from the call
+designer_signoff: <handle, ISO-8601>   # designer confirms the extracted entries
+```
+
+Stardust transcribes, extracts candidate `quick` or `qualified` entries
+from the transcript, and surfaces them for designer signoff before they
+land in the corpus.
+
+### When to use which mode
+
+- **Early corpus, small N.** Prefer `qualified` and `conversation`. Depth
+  matters more than volume; 5 great qualified critiques outweigh 50 quick
+  verdicts.
+- **Mature corpus, large N.** Prefer `quick` and `comparative`. Volume
+  and pairwise contrast carry the system once depth is established.
+- **Always available.** `qualified` and `conversation` opt-in any time.
+  `quick` and `comparative` are the default scaffolding of a critique
+  session.
+
+The mode of a critique is **never auto-promoted upward** (a `quick`
+critique does not become `qualified` by curator-pass enrichment) and
+**never auto-demoted downward** (an extracted `quick` entry from a
+conversation does not silently inherit conversational caveats). Mode is a
+property of how the judgment was rendered, not its conclusion.
 
 Every ingester — URL crawler, Figma reader, vision-on-image, PDF parser,
 video frame sampler — produces the same structured shape. This is the only
@@ -200,14 +294,26 @@ critique session  →  raw critiques  →  curator pass  →  divergence-toolkit
                                                      →  new exemplar entries
                                                      →  new anti-patterns
                                                      →  candidate moves queue
+                                                     →  move-metadata updates
 ```
 
-- A **critique session** is lightweight: designer reviews 5 proposals, leaves
-  a verdict + 1–3 line `why` per proposal. ~15 minutes.
-- A **curator pass** (human, or stardust-with-review) extracts: new moves
-  named, new anti-pattern tells, exemplar additions, retirement candidates.
+- A **critique session** is lightweight: designer reviews proposals in their
+  chosen mode (per §2a). A `quick` session is ~15 minutes for 5 proposals;
+  a `qualified` session is ~10 minutes per proposal; `conversation` is ~30
+  minutes plus signoff.
+- A **curator pass** (human, or stardust-with-review) extracts:
+  - From `quick` entries — exemplar additions, anti-pattern tells,
+    retirement candidates.
+  - From `qualified` entries — same as `quick`, plus per-dimension
+    annotations on existing exemplars and new candidate moves seeded by the
+    `counterfactual` field.
+  - From `comparative` entries — `when_to_use` / `when_not_to_use` updates
+    on existing moves; never new exemplars.
+  - From `conversation` entries — only the *signed-off* extracted entries
+    enter the loop (they re-enter as `quick` or `qualified`); the recording
+    itself does not.
 - Each pass updates the toolkit and exemplar corpus with provenance (who,
-  when, from which session).
+  when, from which session, **what mode**).
 
 ---
 
