@@ -107,5 +107,6 @@ read. Format conventions in `reference/artifact-map.md`.
 - `reference/state-machine.md` — page lifecycle, stale rules, state report format.
 - `reference/artifact-map.md` — every file stardust reads or writes, with ownership and provenance shape.
 - `reference/divergence-toolkit.md` — anti-mediocrity device. Default-moves list, deterministic seed, font decks, role-naming rule. Consumed by `direct` (when authoring target tokens) and `prototype` (when generating variants).
+- `reference/learning-system.md` — runtime contract for the moves catalog and exemplar/critique corpus. Loaded by `direct` (anchor selection by `brand_axes`) and `prototype` (move-combination contract enforcement). Design rationale lives in `plugins/stardust/design/learning-system.md`.
 - `reference/token-contract.md` — `:root` CSS custom-property contract every prototype and migrated page must expose. The token interface between stardust and any downstream consumer.
 - `reference/data-attributes.md` — structural `data-*` vocabulary applied to sections in every prototype and migrated page. The structural lingua franca between stardust sub-commands and downstream tools.
