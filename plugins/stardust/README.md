@@ -35,11 +35,12 @@ extract  →  direct  →  prototype  →  migrate
 ## Surface
 
 ```
-$stardust                  # state report + freeform intent reasoning
-$stardust extract [url]    # ingest existing site
-$stardust direct           # resolve intent → target PRODUCT.md / DESIGN.md
-$stardust prototype [page] # before/after prototype, delegates to impeccable
-$stardust migrate [page]   # render redesigned static HTML (incremental)
+$stardust                       # state report + freeform intent reasoning
+$stardust extract [url]         # ingest existing site
+$stardust direct                # resolve intent → target PRODUCT.md / DESIGN.md
+$stardust prototype [page]      # before/after prototype, delegates to impeccable
+$stardust migrate [page]        # render redesigned static HTML (incremental)
+$stardust capture <src> [-- s]  # submit one capture (source + one sentence) to learning corpus
 ```
 
 `$stardust` with no argument runs a read-only state report and shows the

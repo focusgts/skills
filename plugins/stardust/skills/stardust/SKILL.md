@@ -40,9 +40,13 @@ Once setup is done, route on the user's input:
 - **No argument.** Render the **state report** described in
   `reference/state-machine.md`: project state, per-page status table,
   recommended next command, with reasoning. Do not write anything.
-- **First word is `extract`, `direct`, `prototype`, or `migrate`.** Delegate
-  to the matching sub-command (`stardust:<name>` skill). Pass remaining args
-  through.
+- **First word is `extract`, `direct`, `prototype`, `migrate`, or
+  `capture`.** Delegate to the matching sub-command (`stardust:<name>`
+  skill). Pass remaining args through.
+- **The phrase "capture this" (or close variants) during a session.**
+  Treat as `$stardust capture` against the most recent source the
+  session has discussed. Prompt for the sentence. See
+  `capture/SKILL.md` § Inline capture.
 - **First word is anything else (a freeform phrase).** Treat it as a
   redesign intent. Load `reference/intent-reasoning.md` and follow the
   procedure step by step. **Do not execute any impeccable or stardust
