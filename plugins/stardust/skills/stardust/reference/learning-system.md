@@ -14,12 +14,29 @@ in `divergence-toolkit.md`.
 
 ## Where things live
 
+The actor model is **hybrid** (per `design/learning-system.md` Actors
+section): canonical material is plugin-side; per-redesign material is
+project-side. Stardust reads the union and writes only project-side at
+runtime.
+
 ```
-stardust/exemplars/    # plugin-shipped or org-curated reference set; read-only at runtime
-stardust/captures/     # designer-submitted raw captures (one file per capture)
-stardust/critiques/    # per-redesign critique entries (one file per critique)
-stardust/audits/       # output of the house-style audit (timestamped)
+# Plugin-side (read-only at user runtime)
+plugins/stardust/exemplars/    # canonical exemplar corpus
+plugins/stardust/captures/     # contributor staging queue (PR-driven)
+plugins/stardust/audits/       # plugin-wide histograms
+
+# Project-side (written by stardust during a session)
+<user-project>/stardust/exemplars/   # optional local additions (project-only)
+<user-project>/stardust/captures/    # optional local captures
+<user-project>/stardust/critiques/   # per-redesign critique entries
+<user-project>/stardust/audits/      # per-project histogram
 ```
+
+At read time, exemplars are the **union** of plugin-side and project-side.
+Plugin-side is the trusted base; project-side is opt-in additions for the
+current session. At write time, stardust writes only project-side.
+Promotion of project-side material into the plugin corpus is a manual
+contributor action (PR), never automatic.
 
 Exemplars and critiques use the entry schema in
 `design/learning-system.md` §2. Captures use the minimal capture schema in

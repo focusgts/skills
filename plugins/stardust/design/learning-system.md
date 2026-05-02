@@ -37,6 +37,64 @@ Out of scope (separate sessions):
 
 ---
 
+## Actors
+
+Three actors, with distinct rights and responsibilities:
+
+1. **Plugin user** (designer or developer running stardust on their own
+   project). Reads the canonical corpus and moves catalog at runtime.
+   Produces critiques and (optionally) captures during a redesign session
+   under the project working directory.
+2. **Plugin contributor** (a "great designer" working with the maintainer
+   team). Submits captures, abstracts them into named moves with the
+   curator, and authors exemplar entries that ship with the plugin. This
+   work happens against this repo (PRs, issues, reviews).
+3. **Plugin maintainer** (developer of the skill). Owns the schemas, the
+   runtime contract, the divergence-toolkit, and the eval suite. Runs the
+   curator pass. Does not judge designs themselves.
+
+**This session adopts a hybrid learning model** (per decisions log §8.9):
+
+- The **canonical corpus** (exemplars + the moves catalog) is
+  contributor-curated and ships plugin-side.
+- **Per-project critiques** are written locally in the user's working
+  directory and stay there by default. They never flow upstream
+  automatically.
+- An **explicit, manual upstream submission path** exists: a user (or
+  contributor) can promote a local capture or critique into the plugin
+  corpus by opening a PR against this repo. Stardust does not auto-submit.
+- This matches stardust's existing project-relative path convention
+  (`<user-project>/stardust/...`), so the runtime contract paths in
+  `reference/learning-system.md` need no refactor.
+
+Federated learning (telemetry, automatic upstream flow) is a separate
+future design session. The current model is "plugin-only by default with a
+manual promotion path."
+
+### Where things live
+
+```
+# Plugin-side (contributor-curated, ships with the plugin, read-only at user runtime)
+plugins/stardust/exemplars/             # canonical exemplar corpus
+plugins/stardust/captures/              # contributor staging queue (PR-driven)
+plugins/stardust/captures/candidates/   # candidate moves not yet promoted
+plugins/stardust/audits/                # plugin-wide histogram audits
+
+# Project-side (local to the user's redesign, not auto-shared)
+<user-project>/stardust/exemplars/      # optional local additions (project-only)
+<user-project>/stardust/captures/       # optional local captures (PR to promote)
+<user-project>/stardust/critiques/      # per-redesign critique entries
+<user-project>/stardust/audits/         # per-project histogram (this redesign)
+```
+
+At `direct` time, stardust reads the **union** of plugin-side and
+project-side exemplars (with plugin-side as the trusted base; project-side
+as opt-in additions for that user's session). Captures and critiques are
+written project-side. Promotion to plugin-side is a manual contributor
+action — never automatic.
+
+---
+
 ## 1. Move-combination contract
 
 A **move** is a single, named design decision along one axis. Examples:
@@ -80,10 +138,17 @@ skeleton.
 
 ## 2. Exemplar / critique corpus
 
-Two locations:
+Paths are defined in the Actors section above. Summary:
 
-- `stardust/exemplars/` — plugin-shipped, curated reference set.
-- `stardust/critiques/` — per-redesign, generated during a session.
+- **Exemplars** live in two scopes: plugin-side (canonical, shipped with
+  the plugin) and project-side (optional local additions). At runtime
+  stardust reads the union; plugin-side is the trusted base.
+- **Critiques** live project-side only by default. The user can promote a
+  critique into the plugin corpus via PR; nothing flows upstream
+  automatically.
+- **Captures** live in either scope. Project-side is for designers who
+  want to remember something locally; plugin-side is the contributor
+  staging queue.
 
 **Entry schema** (one YAML/MD file per exemplar; critique entries add
 `critique_mode` plus mode-specific fields per §2a):
@@ -157,7 +222,7 @@ per_dimension:
 working_moves:    [ move-id, ... ]    # moves that landed
 failing_moves:    [ move-id, ... ]    # moves that didn't land
 counterfactual:   "this would be stunning if ..."   # 1–2 lines
-anchor_read:      "appropriate" | "lazy" | "wrong-territory" + 1 line
+anchor_read:      "appropriate" | "lazy" | "wrong-territory" + 1 line   # optional
 designer_context: "<perspective; e.g. editorial sensibility, type designer>"
 ```
 
@@ -272,16 +337,31 @@ Two side paths:
 
 ## 5. Retirement and the house-style audit
 
-Growth without pruning recreates the original problem at higher cost.
+Growth without pruning recreates the original problem at higher cost. The
+audit has two scopes — distinct because critiques don't auto-flow upstream
+in the hybrid model:
 
-- A periodic **histogram audit** of moves used across all redesigns stardust
-  has produced.
-- **Owned by a lead designer, run manually.** Stardust generates the raw
-  histogram; the lead designer interprets it. Automation would catch drift
-  mechanically but miss qualitative slop, which is exactly the failure mode
-  the audit is meant to detect.
+**Per-project audit** (runs at user runtime, lives in
+`<user-project>/stardust/audits/`). Histogram of moves used across pages
+of the current redesign. Detects within-redesign defaults that creep in
+across pages of the same project.
+
+**Plugin-wide audit** (runs at curator-pass time, lives in
+`plugins/stardust/audits/`). Histogram of moves used across exemplars and
+across whatever test redesigns + manually-promoted user submissions the
+plugin maintainer team has accumulated. Detects cross-brand defaults —
+moves the *catalog* over-relies on. Sample size depends on what
+contributors and curators have promoted upstream, not on automatic user
+telemetry.
+
+For both:
+
+- **Owned by a lead designer (plugin-wide) or the project owner
+  (per-project), run manually.** Stardust generates the raw histogram;
+  human interprets it. Automation would catch drift mechanically but miss
+  qualitative slop, which is the failure the audit is meant to detect.
 - Moves that dominate regardless of brand → demote (treat as default-combo
-  warning).
+  warning in `divergence-toolkit.md`).
 - Moves unused for N sessions → retire (move to archive, not deleted, with
   reason recorded).
 
@@ -351,6 +431,17 @@ All v0 open questions, with the resolved answer and a one-line rationale.
    Frictionless contribution outweighs cheaper clustering.
 8. **Verdict vocabulary — `stunning | strong | competent | slop`.**
    Confirmed. "Slop" is loaded but precise.
+9. **Actor model — hybrid (plugin-only by default + manual upstream
+   promotion path).** Canonical corpus is contributor-curated and ships
+   with the plugin. Per-project critiques and captures live project-side
+   and stay local by default; users can promote into the plugin corpus by
+   PR. Nothing flows upstream automatically. Aligns with stardust's
+   existing project-relative path convention; no runtime path refactor
+   required. Federated learning (telemetry, automatic flow) is a separate
+   future session. (Resolved mid-session, not part of v0.)
+10. **`anchor_read` field on `qualified` critiques — optional.** Designers
+    fill it when relevant; the system does not require it. (Resolved
+    mid-session.)
 
 ---
 
