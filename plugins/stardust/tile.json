@@ -6,7 +6,8 @@
     "stardust:extract": "skills/extract/SKILL.md",
     "stardust:direct": "skills/direct/SKILL.md",
     "stardust:prototype": "skills/prototype/SKILL.md",
-    "stardust:migrate": "skills/migrate/SKILL.md"
+    "stardust:migrate": "skills/migrate/SKILL.md",
+    "stardust:capture": "skills/capture/SKILL.md"
   },
   "softDependencies": [
     "impeccable"

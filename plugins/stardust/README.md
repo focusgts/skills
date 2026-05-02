@@ -62,6 +62,14 @@ otherwise with a clear install hint.
 
 ## Status
 
+`v0.4.0` — adds the **learning system**: a moves catalog and exemplar/critique
+corpus that grow under designer guidance. `direct` selects anchors from the
+corpus by `brand_axes` overlap; `prototype` enforces a move-combination
+contract (≥3 moves across ≥3 axes, brand-justification, anchor coherence) on
+every brief before user confirmation. New `$stardust capture` sub-skill for
+frictionless contribution. See `design/learning-system.md` for the rationale
+and `skills/stardust/reference/learning-system.md` for the runtime contract.
+
 `v0.3.0` — complete refactor. v1 (the four-stage greenfield design tool) is
 preserved at the [`stardust--v0.1.0`](https://github.com/adobe/skills/tree/stardust--v0.1.0/plugins/stardust)
 tag and is unrelated to this version's surface.
