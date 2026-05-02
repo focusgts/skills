@@ -612,6 +612,16 @@ Skip this phase entirely when the resolved mode is rebrand and no
 `brand_axes` overlap can be computed from the current state — anchors
 in that mode would mislead more than help.
 
+**Stardust-observed candidate moves.** While reading exemplars in this
+phase, stardust may observe a pattern not yet named in
+`divergence-toolkit.md` §1a. The detection rules and emission protocol
+are in `skills/stardust/reference/learning-system.md` § Proposed
+candidates (stardust-observed). Hard cap: at most 2 emissions per
+session, only from `stunning` or `strong` exemplars, only on
+structural axes (layout / type / image / motion / structural).
+Emissions surface as a one-line note to the user; the curator pass
+validates or rejects.
+
 ### Phase 3 — Author target PRODUCT.md
 
 Write `PRODUCT.md` at the project root using impeccable's

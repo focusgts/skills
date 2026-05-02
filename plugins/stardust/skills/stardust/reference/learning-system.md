@@ -128,7 +128,110 @@ Mode-specific required fields per `design/learning-system.md` §2a:
 **Candidate moves** (when stardust observes an exemplar that uses a move
 not yet in `divergence-toolkit.md`): emit the candidate to
 `stardust/captures/candidates/<timestamp>-<id>.yaml` with `id` prefixed
-`candidate/`. Do not promote. Do not silently extend the catalog.
+`candidate/`. Do not promote. Do not silently extend the catalog. See
+the next section for detection rules and emission protocol.
+
+## Proposed candidates (stardust-observed)
+
+Stardust may emit candidate moves at runtime when it observes a pattern
+in an exemplar that is not yet in `divergence-toolkit.md` §1a. This
+connects runtime observation to the contribution flow without bypassing
+designer judgment — stardust *proposes*, designers (via the curator
+pass per `design/curator-pass.md`) *promote*.
+
+### When to emit (detection rules)
+
+The emission gate is **conservative**. False positives pollute the
+candidate queue and waste curator time, so detection is restrictive
+by design:
+
+1. **Source must be high-verdict.** Only emit when reading an exemplar
+   with `verdict: stunning` or `verdict: strong`. Never emit from a
+   `competent`, `slop`, or unverdicted source. The signal must be
+   strong enough that the observation is worth capturing.
+2. **Pattern must be structural.** Only emit on `layout`, `type`,
+   `image`, `motion`, or `structural` axes — patterns where shape
+   matters. Do **not** emit on `palette` or `tone` axes (palette is
+   token-level; tone is content-level; both are too noisy at the
+   move-id grain).
+3. **Pattern must be unambiguous.** The observation must be specific
+   enough to name in one short id. If the only honest description is
+   *"something distinctive about how the type works"* without a more
+   concrete pattern, do not emit.
+4. **Pattern must not match an existing move.** Cross-check against
+   §1a. If any existing move id covers the observation (even
+   approximately), emit nothing — the existing id is the right
+   reference.
+5. **Hard cap: at most 2 candidate emissions per session.** If
+   stardust would emit a third candidate in a single session, suppress
+   the emission and surface a one-line note instead: *"third candidate
+   suppressed — file a manual capture if this is meaningful."* The
+   cap exists to prevent noisy sessions from flooding the queue.
+
+### Emission protocol
+
+When the gate passes, stardust:
+
+1. **Names the candidate** deterministically. Form: `candidate/<axis>/<short-name>` where `<short-name>` is the first 3–5
+   alphanumeric words describing the pattern, joined by `-`, capped
+   at 30 chars. Example: `candidate/layout/full-bleed-with-marginalia`.
+2. **Writes the candidate file** to
+   `<user-project>/stardust/captures/candidates/<timestamp>-<short-name>.yaml`
+   using the schema in `divergence-toolkit.md` §1a:
+
+   ```yaml
+   id:               candidate/<axis>/<short-name>
+   axis:             <axis>
+   summary:          <one line describing the observed pattern>
+   when_to_use:      <stardust's best read; explicitly tentative>
+   when_not_to_use:  <stardust's best read; explicitly tentative>
+   exemplars:        [<exemplar-id>]              # the source
+   provenance:
+     added_by:       stardust-observed
+     from_session:   <session id>
+     captures:       []                            # no underlying captures
+     observed_in:    [<exemplar-id>]
+     confidence:     <0.0–1.0 — stardust's self-assessment>
+   ```
+
+   The `added_by: stardust-observed` value is mandatory and tells the
+   curator pass this was machine-observed, not contributor-authored.
+3. **Notes the candidate** in the design-facts block of the source
+   exemplar by appending the candidate id to `observed_moves[]`.
+4. **Surfaces a one-line note** to the user:
+   *"Observed a pattern in <exemplar-id> not yet named in the catalog;
+   saved as candidate/<axis>/<short-name>. Curator pass will validate
+   or reject."*
+
+### Curator pass treatment
+
+The curator pass (per `design/curator-pass.md`) treats
+`added_by: stardust-observed` candidates as **synthetic capture
+clusters** with one observation. They follow the same path as
+contributor-driven candidates but with two adjustments:
+
+- They are **not promoted on a single observation.** A
+  stardust-observed candidate must be **corroborated by at least one
+  contributor capture** (or by a second stardust-observation in a
+  different exemplar) before it becomes a candidate-move PR. This
+  keeps designers as the gate.
+- The originating-designer signoff falls to the **lead designer**
+  rather than a single originating contributor (since there is no
+  human originator). The lead designer signs off, or the candidate is
+  deleted.
+
+### What this path deliberately does NOT do
+
+- **Auto-promote.** Even with multiple observations, candidates land
+  via PR after curator review. The runtime never edits §1a.
+- **Override designer authorship.** A contributor-authored capture
+  for the same idea takes precedence over a stardust-observed
+  candidate; the curator merges them with the contributor as the
+  signoff owner.
+- **Run on low-verdict sources.** Slop and competent entries don't
+  emit candidates — they're not signal-rich enough to abstract from.
+- **Emit silently.** Every emission produces a user-visible note. No
+  background catalog growth.
 
 ## Runtime weighting by `critique_mode`
 
