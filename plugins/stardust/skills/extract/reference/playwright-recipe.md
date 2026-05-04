@@ -86,7 +86,43 @@ For each page, capture:
    letter-spacing, color.
 6. **Landmark structure** — every `header`, `nav`, `main`, `aside`,
    `footer`, plus elements with `role="banner|navigation|main|complementary|contentinfo|region"`. For each: tag, role, id, class, child element count.
-7. **Visible text per landmark** — innerText, normalised whitespace.
+7. **Visible text per landmark** — innerText in full, normalised
+   whitespace. **No truncation.** Reference scripts must not slice
+   `innerText` to a fixed length (an early v0.2 reference did
+   `.slice(0, 4000)`, which silently discarded most of the body on
+   long-form pages — privacy / policy / docs templates routinely run
+   to 6,000+ words). Storing the full innerText across a 25-page crawl
+   adds ~250 KB to the per-page JSON corpus, well below any reasonable
+   threshold; whatever cost is involved, the alternative is silent
+   data loss that compounds into module-detection misses and missing
+   body copy at migrate time. See § Capture list (7-bis) below for
+   the structured-content fields that supplement innerText.
+
+7-bis. **Section body, lists, Q&A, quotes (structured)** — innerText
+   alone gives one big blob per landmark; downstream phases need the
+   structure preserved. For each heading-bounded block within a
+   landmark, additionally capture:
+   - `body[]` — `textContent` of every direct-descendant `<p>` /
+     `<blockquote>` not inside a nested heading, in DOM order. Strip
+     leading/trailing whitespace, preserve internal breaks.
+   - `lists[]` — for every `<ul>` / `<ol>` not nested inside a
+     captured paragraph, an entry `{ ordered: bool, items: [string] }`
+     where each item is `textContent` of one `<li>`.
+   - `qa[]` — when an accordion (`<details>` or
+     ARIA-driven disclosure) is detected within the section, capture
+     each entry as `{ q: <trigger text>, a: <disclosed textContent> }`.
+   - `quotes[]` — when a review-card / testimonial / pullquote
+     pattern is detected (a `<blockquote>` or `[class*="testimonial"
+     i]` containing prose plus an optional attribution / rating),
+     capture each as `{ text, attribution?, rating? }` (rating
+     numeric when available, e.g. from `aria-label="5 out of 5"`).
+
+   These attach to the section entry in `landmarks[].children[]`
+   (per `current-state-schema.md` § Landmarks). They are required
+   for migrate to render production-quality body copy from captured
+   data — without them, every body region under a heading falls back
+   to placeholder-with-signature even when the source page had real
+   prose to reuse.
 8. **CTA inventory** — every `button`, `[role="button"]`, and `<a>`
    that visually presents as a button (background-color != transparent,
    `border-radius > 2px`, padding > 4 px). Capture: label, href if any,
@@ -238,4 +274,8 @@ A failure on one page must not abort the crawl. Record the error
 under `failures[]` and continue with the next page. The skill's final
 state report counts successes vs failures, and surfaces the failure
 classes (`HTTPError`, `ContentTypeError`, `EmptyPageError`,
-`TimeoutError`) so the user can diagnose at a glance.
+`TimeoutError`, `ProvenanceMissing`) so the user can diagnose at a
+glance. `ProvenanceMissing` covers the synthesis-guard refusal in
+`extract/SKILL.md` § Phase 2 — a page record could not be marked
+`extracted` because the Playwright evidence contract was not
+satisfiable for that slug.

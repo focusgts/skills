@@ -148,8 +148,14 @@ Capture per page (full schema in `reference/current-state-schema.md`):
 
 - Page metadata (title, meta description, OG tags, theme-color)
 - Semantic structure: heading outline, landmark roles, sections
-- Content: visible text per section, CTA labels and href targets,
-  link inventory (internal vs external)
+- Content: visible text per section (full innerText, **no
+  truncation** per `reference/playwright-recipe.md` § Capture
+  list 7), structured paragraphs (`body[]`), lists, FAQ Q/A
+  pairs, and review/testimonial quotes per
+  § Capture list 7-bis. Without these structured fields,
+  every body region under a heading falls back to placeholder
+  signature at migrate time.
+- CTA labels and href targets, link inventory (internal vs external)
 - Per-section computed style summary: dominant colors, font families
   in use, spacing rhythm, border-radius, shadows
 - Media inventory: img/srcset with original URLs and intrinsic
@@ -160,6 +166,23 @@ Capture per page (full schema in `reference/current-state-schema.md`):
 Save to `stardust/current/pages/<slug>.json` with `_provenance` as the
 first key. Save referenced media to `stardust/current/assets/media/`
 preserving basename plus a short content hash.
+
+**Live-render evidence (synthesis is forbidden).** Refuse to mark
+a page `extracted` in `state.json` unless its `_provenance`
+contains `renderedBy: "playwright"`, an ISO-8601 `fetchedAt`, a
+positive integer `waitMs`, a `waitMode` from the recipe, and a
+final `httpStatus` in the 2xx/3xx range. These five fields are
+the contract enforced by `reference/current-state-schema.md`
+§ Live-render evidence and read back by every downstream phase
+via `validateProvenance()` per
+`skills/stardust/reference/state-machine.md` § Provenance
+validation. Synthesizing a page record from
+`_brand-extraction.json` plus URL patterns plus captured photos
+— the 2026-04-30 lovesac shortcut — is the failure mode this
+guard exists to prevent. When the agent (or a delegated sub-
+agent) cannot satisfy the contract for a page, treat the page
+as a Phase 2 failure: record under `_crawl-log.json#crawl.failures[]`
+with `errorClass: "ProvenanceMissing"` and continue.
 
 Mark the page `extracted` in `state.json` immediately after each
 successful page write. If a page fails, record the error in
@@ -290,8 +313,16 @@ After all Phase 2-5 writes succeed:
      _brand-extraction.json
      _crawl-log.json
 
+   Per-page evidence:
+     slug         live  waitMode               waitMs   status
+     /            yes   medium                 2380     200
+     /about       yes   medium                 2110     200
+     /pricing     yes   medium                 1940     200
+     /products    yes   medium                 2640     200
+     /contact     yes   domcontentloaded(fb)   8000     200
+
    Wait summary: 4 resolved at medium (avg 2.4s), 1 fallback (timed out at 8s)
-     → /donate/ may be under-captured; consider --refresh
+     → /contact may be under-captured; consider --refresh
 
    Open stardust/current/brand-review.html to verify the extraction
    before running $stardust direct.
@@ -305,9 +336,21 @@ After all Phase 2-5 writes succeed:
    Next: $stardust direct  (resolve a redesign direction)
    ```
 
+   The **per-page evidence table** is mandatory. The `live` column
+   is `yes` when `_provenance.renderedBy === "playwright"` AND
+   `waitMs > 0`, else `no`. A `no` row means the page record was
+   not produced by a live Playwright render — this should never
+   happen given the write-time guard, but the visible column is
+   the defense-in-depth signal that catches the failure mode
+   when it does (the 2026-04-30 lovesac synthesis bug went four
+   phases deep before being caught because no report column
+   surfaced the missing provenance). A maintainer scanning the
+   summary should see `yes` on every row.
+
    Compute the wait summary by grouping each page's `_provenance.waitMode`
    and averaging `waitMs`. List slugs whose `waitMode` ends in
-   `(fallback)` as candidates for `--refresh`.
+   `(fallback)` (rendered as `(fb)` in the table for width) as
+   candidates for `--refresh`.
 
 ## Outputs
 
@@ -355,6 +398,20 @@ report; do not engineer around it.
   `domcontentloaded` and capture what is rendered. Record the
   fallback in the per-page `_provenance.waitMode` and surface in the
   wait-summary line of the final report.
+- **Synthesis attempt (forbidden).** When the agent (or a delegated
+  sub-agent) cannot run a real Playwright render for a page —
+  whether due to time pressure, token budget, or a tool/network
+  failure — the only correct outcome is to record the page as a
+  Phase 2 failure (`errorClass: "ProvenanceMissing"` in
+  `_crawl-log.json#crawl.failures[]`) and continue. **Synthesizing
+  a page record from `_brand-extraction.json` plus URL patterns
+  plus captured photos at "semantically matching" template
+  positions is forbidden.** This was the 2026-04-30 lovesac.com
+  failure — 20 of 25 pages synthesized this way and the cascade
+  ran four phases on the synthesized data before the gap was
+  caught by a meta-question. The synthesis shortcut produces
+  output indistinguishable from a successful run and propagates
+  fabricated content through every downstream phase.
 
 ## Prep mode (--prep)
 
@@ -373,6 +430,34 @@ inventory — the small discovery cap (5 pages) is insufficient. The
 cap-respecting selection logic from `reference/ia-extraction.md`
 § Page selection still applies for ordering and junk-filtering;
 it just doesn't truncate.
+
+#### Sub-agent prompt requirements (when delegating)
+
+When `--prep` is heavy enough that the agent delegates extraction
+to a sub-agent (a presales-shaped pattern when the inventory is
+large), the sub-agent prompt **must**:
+
+1. **Forbid synthesis by name.** The literal sentence
+   *"do not synthesize a page record from `_brand-extraction.json`
+   + URL patterns + captured photos; every page must be a live
+   Playwright render"* must appear in the prompt. The earlier
+   wording *"must actually invoke Playwright per page"* was
+   satisfiable in spirit by synthesis-with-photo-reuse and
+   produced the lovesac failure. Naming the shortcut explicitly
+   closes that loophole.
+2. **Require a per-page evidence table in the return.** Columns:
+   `slug | waitMode | waitMs | fetchedAt | httpStatus`. The
+   parent agent reads this table on completion and aborts if
+   any row is missing or shows `waitMs: 0`.
+3. **Require the wait-summary line in the return**, formatted
+   identically to Phase 6's wait summary, so the parent can
+   surface it in the user-facing report without reformatting.
+
+These three are mandatory; missing any of them in the sub-agent
+prompt is itself a recipe violation. The cascade-level guard in
+`prepare-migration` validates the resulting per-page JSONs via
+`validateProvenance()` regardless — but a well-formed sub-agent
+return makes the failure cheaper to diagnose.
 
 ### 2. Page typing
 
@@ -440,6 +525,7 @@ extract --prep complete
 =======================
 
 Inventory:    127 pages crawled (5 prior, 122 new)
+Provenance:   127/127 live (every page has Playwright evidence)
 Page types:   landing 1 · article 84 · listing 6 · program 12 · form 3 · static 18 · unique 3
               (LLM-inferred; refine in direct --prep)
 
@@ -453,6 +539,14 @@ Typed slots:  filled per page-type (see current/pages/<slug>.json § slots)
 
 Next: $stardust direct --prep  (confirm types, name modules)
 ```
+
+The `Provenance: <live>/<total> live` line is mandatory in
+prep-mode output. When the ratio is anything other than
+`<total>/<total>` the prep run has failed the synthesis guard;
+list the affected slugs as a sub-bullet and treat the prep run
+as incomplete (the cascade-level guard in
+`prepare-migration` SKILL.md surfaces the same check between
+phases).
 
 Default mode (no `--prep`) is unchanged. The flag is intended for
 the `prepare-migration` orchestrator, though direct invocation is
