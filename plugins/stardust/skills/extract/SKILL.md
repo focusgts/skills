@@ -39,6 +39,15 @@ critique, and it does not modify the live site. It writes only under
   Default `medium`. See `reference/playwright-recipe.md` § Wait modes.
 - `--no-junk-filter` — optional. Disable the default junk-page filter
   in discovery (see `reference/ia-extraction.md` § Filtering).
+- `--no-consent-dismiss` — optional. Skip the pre-flight consent /
+  cookie banner dismissal (see `reference/playwright-recipe.md`
+  § Pre-flight: consent dismissal). Use when the redesign scope
+  explicitly includes the consent surface, or when the
+  dismissal's side-effects (script activation that wouldn't
+  otherwise run) need to be avoided. Default behaviour is to
+  dismiss; the contract preserves screenshots, voice
+  aggregation, and per-section style from being polluted by
+  the banner.
 - `--prep` — optional. Run in **migrate-prep mode**: lift the cap,
   type each page, detect module candidates, capture typed content
   slots, emit the prep summary. See § Prep mode below. Typically
@@ -61,6 +70,22 @@ Additional checks for this sub-command:
    `site.originUrl` and the new `<url>` is a different origin, stop and
    ask before clobbering. Stardust does not silently mix two sites in
    one project.
+3. **Browser context.** Open a fresh `BrowserContext` for the run.
+   Run the **consent dismissal pre-flight** per
+   `reference/playwright-recipe.md` § Pre-flight: consent
+   dismissal *unless* `--no-consent-dismiss` is set. Cookies
+   persist across the per-page loop within the same context, so
+   one dismissal covers the whole crawl. Record the resolved
+   method in `_crawl-log.json#consent.method`.
+4. **Bot-management probe.** When the first navigation in the run
+   returns `ERR_HTTP2_PROTOCOL_ERROR` or `ERR_QUIC_PROTOCOL_ERROR`,
+   or hangs through the entire hard-cap on what should be a fast
+   origin, **do not retry headless**. Switch to
+   `headless: false, channel: 'chrome'` per
+   `reference/playwright-recipe.md` § Bot-management fallback and
+   record the switch in `_crawl-log.json#discovery.fetchTechnique`
+   so re-runs start in headed mode without rediscovering the
+   issue.
 
 ## Procedure
 
@@ -392,6 +417,20 @@ report; do not engineer around it.
   redirects to a login screen, capture that one page, mark the rest as
   unreachable, and ask the user how to proceed (provide cookies via
   Playwright config, change the entry URL, or scope to public pages).
+- **Bot-management block (Akamai / Cloudflare / F5 / Imperva).**
+  When the first navigation returns `ERR_HTTP2_PROTOCOL_ERROR`,
+  `ERR_QUIC_PROTOCOL_ERROR`, or hangs through the hard-cap on a
+  TLS/H2 fingerprint check, the issue is JA3/H2 fingerprinting on
+  bundled-chromium-default headless mode — not auth, not network.
+  Switch to `headless: false, channel: 'chrome'` per
+  `reference/playwright-recipe.md` § Bot-management fallback. Do
+  **not** retry headless: it will fail identically. The headed
+  fallback works against most enterprise / commerce origins;
+  `playwright-extra` + stealth plugin is a non-standard escape
+  hatch for the residual cases. The headed window pops visibly,
+  which is acceptable for interactive runs and unacceptable for
+  unattended pipelines — surface this to the user when first
+  triggered.
 - **JavaScript-only content.** Playwright already handles this. If
   the configured wait condition never fires within the mode's hard
   cap (`reference/playwright-recipe.md` § Wait modes), fall back to

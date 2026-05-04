@@ -23,6 +23,164 @@ javaScriptEnabled: true
 ignoreHTTPSErrors: true     (some staging hosts ship invalid certs)
 ```
 
+### Bot-management fallback (Akamai / Cloudflare / F5 / Imperva)
+
+Bundled-chromium-default headless mode (no `channel`,
+`headless: true`) emits a TLS/H2 fingerprint that Akamai and
+several other bot-management products reject outright — the
+first navigation returns `net::ERR_HTTP2_PROTOCOL_ERROR` or
+`net::ERR_QUIC_PROTOCOL_ERROR` immediately, before any JS runs.
+The bare Playwright `request` API hits the same fingerprint and
+fails identically; passing `--disable-http2` flips the failure
+mode to a 30-second `TimeoutError` (connection accepted, no
+content) but doesn't recover.
+
+The known-working fallback is **headed real Chrome**:
+
+```
+chromium.launch({ headless: false, channel: 'chrome' })
+```
+
+This pops a visible browser window during the run, which is
+acceptable for a local dogfood / interactive session and
+unacceptable for an unattended pipeline. The trade-off is the
+correct one for stardust's primary use case (presales redesign
+of an existing commercial site, agent-driven from a developer's
+machine) — the alternative is silently failing on most
+enterprise / large-retail / commerce origins.
+
+**Retry rule.** When the first navigation in a run returns any
+of `ERR_HTTP2_PROTOCOL_ERROR`, `ERR_QUIC_PROTOCOL_ERROR`, or
+hangs for the entire hard-cap on a connection that doesn't
+fingerprint cleanly: do **not** retry headless. Switch to
+`headless: false, channel: 'chrome'` immediately and record the
+switch in `_crawl-log.json#discovery.fetchTechnique` so re-runs
+start in headed mode without rediscovering the issue.
+
+**Sub-resource fetches.** Once a page context is open in headed
+Chrome, additional fetches (sitemap, logo file, ad-hoc inspection
+URLs) inherit the JA3 fingerprint when issued via
+`page.evaluate(async () => fetch('/...'))` — the in-page fetch
+goes through the same TLS context. The bare Playwright `request`
+API does **not** inherit the page context's fingerprint and
+will hit the same H2 protocol error even after cookies are
+established. Use the in-page evaluate pattern for any sub-resource
+fetch on a bot-managed origin.
+
+**Escape hatch (not standard).** The `playwright-extra` plugin
+plus `puppeteer-extra-plugin-stealth` works on some Akamai
+configurations but is non-standard and brittle across vendor
+config changes. Stardust does not depend on it; mention to the
+user as a path of last resort when even headed real Chrome is
+blocked.
+
+## Pre-flight: consent dismissal
+
+Most production-tier sites ship a consent / cookie banner
+(OneTrust, Cookiebot, Didomi, Osano, TCF v2-compliant custom
+implementations) that overlays the bottom 25–35% of the
+viewport. With default extract behavior the banner:
+
+- covers the hero in every screenshot — the most load-bearing
+  surface for downstream `direct` and `prototype` reasoning;
+- dominates `voiceTable.ctaFrequency` with cookie-modal buttons
+  (`Manage Settings`, `Reject All`, `Accept All` — appearing
+  once per page across an N-page crawl);
+- adds a phantom modal to every page's component count;
+- leaks the banner's own font stack into per-section style
+  aggregation.
+
+Pre-flight a **consent dismissal** before the per-page loop.
+One dismissal in a fresh `BrowserContext` typically persists
+the cookie state across every subsequent page in the same
+context, so the cost is one extra navigation per crawl.
+
+### Dismissal procedure
+
+API-first (most reliable across vendor config changes), then
+selector fallback. Stop at the first method that hides the
+banner. Probe in this order:
+
+```js
+async function dismissConsent(context, originUrl) {
+  const page = await context.newPage();
+  await page.goto(originUrl, { waitUntil: 'domcontentloaded' });
+
+  // 1. JS APIs — defensive (?., try/catch, short timeouts)
+  const apiTried = await page.evaluate(() => {
+    try { if (window.OneTrust?.RejectAll)        { window.OneTrust.RejectAll();    return 'api:OneTrust.RejectAll'; } } catch {}
+    try { if (window.Cookiebot?.dismiss)         { window.Cookiebot.dismiss();     return 'api:Cookiebot.dismiss'; } } catch {}
+    try { if (window.CookieConsent?.dismiss)     { window.CookieConsent.dismiss(); return 'api:CookieConsent.dismiss'; } } catch {}
+    try { if (window.Didomi?.notice?.hide)       { window.Didomi.notice.hide();    return 'api:Didomi.notice.hide'; } } catch {}
+    try { if (window.osano?.cm?.dismiss)         { window.osano.cm.dismiss();      return 'api:osano.cm.dismiss'; } } catch {}
+    return null;
+  });
+
+  // 2. Selector fallbacks — clicked in order; first that
+  //    dismisses the banner wins.
+  const selectorChain = [
+    '#onetrust-reject-all-handler',
+    '#onetrust-accept-btn-handler',
+    '#CybotCookiebotDialogBodyButtonDecline',
+    '#CybotCookiebotDialogBodyLevelButtonAccept',
+    '[data-testid="uc-deny-all-button"]',     // Usercentrics
+    '[aria-label*="reject" i]',
+    '[aria-label*="accept" i]'
+  ];
+
+  let methodUsed = apiTried;
+  if (!methodUsed) {
+    for (const sel of selectorChain) {
+      try {
+        await page.click(sel, { timeout: 3000 });
+        methodUsed = `selector:${sel}`;
+        break;
+      } catch {}
+    }
+  }
+
+  // 3. Wait for the most common banner containers to be hidden
+  //    or 8s elapse — whichever first.
+  for (const sel of ['#onetrust-banner-sdk', '#CybotCookiebotDialog',
+                     '[id*="didomi"]', '[id*="osano"]']) {
+    await page.waitForSelector(sel, { state: 'hidden', timeout: 8000 }).catch(() => {});
+  }
+
+  await page.close();
+  return methodUsed ?? 'none-detected';
+}
+```
+
+Record the chosen method in
+`_crawl-log.json#consent.method`. Values:
+`api:<vendor>.<call>`, `selector:<css>`, `none-detected` (no
+banner present — common on small / dev / non-EU sites),
+`failed` (banner detected but neither API nor selectors
+hid it — surface to the user as a per-site warning, the
+banner will remain visible in screenshots).
+
+### Opt-out
+
+`extract --no-consent-dismiss` skips the pre-flight entirely.
+Useful when the user wants to capture the banner deliberately
+(e.g. a redesign whose scope explicitly includes the consent
+surface) or when an unattended pipeline must avoid the
+side-effects below.
+
+### Side-effect caveat
+
+Calling `OneTrust.RejectAll()` (and equivalents) commits a
+"non-essential cookies declined" state, which on some sites
+**activates other scripts** that wouldn't have run otherwise —
+analytics, geo-IP detection, locale-cookie writes, A/B test
+slots, live-chat. The 2026-05-03 nvidia.com run observed an
+expanded localization leak after the dismissal step that
+wasn't present in the pre-dismissal run. The dismissal step
+is therefore not behavior-neutral: cleaner screenshots come
+with the possibility of script-activation deltas. When the
+extract returns content that visibly differs from the live
+site, run with `--no-consent-dismiss` to compare.
+
 ## Wait modes
 
 The wait strategy is configurable per `extract` invocation via
