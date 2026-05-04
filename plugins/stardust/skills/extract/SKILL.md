@@ -184,7 +184,19 @@ Capture per page (full schema in `reference/current-state-schema.md`):
 - Per-section computed style summary: dominant colors, font families
   in use, spacing rhythm, border-radius, shadows
 - Media inventory: img/srcset with original URLs and intrinsic
-  dimensions, inline SVG count, video/iframe presence
+  dimensions, inline SVG count, video/iframe presence,
+  `cssBackgrounds[]` (including pseudo-element `::before`/
+  `::after` walks per § Capture list 11) so `background-image`
+  heroes and motifs do not silently disappear from extract.
+- Font files captured via network-intercept (per § Capture list
+  16): every `woff2`/`woff`/`ttf`/`otf` response saved under
+  `assets/fonts/` and recorded in `_brand-extraction.json#type.files[]`
+  with licensing flag.
+- Icon-font detection (per § Capture list 17): when the page
+  uses `[class^="icon-"]` with non-default `::before`
+  font-family + codepoint, capture the family, save the file,
+  and record the `iconClass → codepoint` table in
+  `_brand-extraction.json#iconFont`.
 - Interactive elements: forms (with field types), buttons, modals
   detected by ARIA roles
 
@@ -242,6 +254,15 @@ extracted pages** to avoid the home-page bias documented in
 - **Voice samples** — first paragraph of body copy, the hero headline,
   3 representative CTA labels, a representative link list. Used by
   `direct` later but extracted now so the network round-trip is over.
+- **Hero image** — elevate the home page's primary visual
+  asset to `voice.heroImage` (per `reference/brand-surface.md`
+  § heroImage resolution). Without this elevation, downstream
+  prototype reasons over a 16-image list and frequently picks
+  the `og:image` instead of the live hero.
+- **Icon font** — when detected per `reference/playwright-recipe.md`
+  § Capture list 17, populate `_brand-extraction.json#iconFont`
+  with family, file path, and the `iconClass → codepoint`
+  table so prototypes can render the brand's actual icons.
 - **System components** — cross-page repeated DOM blocks (site
   header, site footer, cross-promo strips, persistent CTAs,
   breadcrumbs). Detected by heading-sequence + CTA-label fingerprint
@@ -516,6 +537,49 @@ After Phase 3 (brand-surface extraction), scan extracted pages for
 pages with similar shape (same sequence of elements, same
 `data-section` / `data-purpose`, similar text shape) is surfaced
 as a module candidate.
+
+#### Signal-source priority
+
+Detection consumes per-page captured fields in this priority
+order. Each higher signal is **weighted more heavily** in the
+match-score; lower signals are tie-breakers and corroboration,
+not primary evidence. The priority exists because higher-up
+fields are explicitly extracted and structured (no parsing
+ambiguity), while the bottom of the list (`landmarks[].innerText`
+substring search) is fragile against capture variations and was
+the source of the 2026-04-29 sliccy.com under-detection (0
+hits for `pre-footer-shell`, 1 of 2 hits for `install-tile` —
+both modules genuinely present on every page, both invisible
+because the substrings being searched lived past the truncation
+boundary that has since been removed).
+
+1. **`pages/<slug>.json#headings[]`** — cross-page repeats of
+   the same heading text in the same level. Highest signal:
+   structured, explicit, captured in full regardless of body
+   length.
+2. **`pages/<slug>.json#ctas[]` labels** — cross-page repeats
+   of the same CTA label appearing on similar surfaces.
+3. **`pages/<slug>.json#media.cssBackgrounds[]` URLs** — same
+   asset URL on multiple pages is a strong system-component
+   signal (already specced as a system-component candidate in
+   `reference/brand-surface.md` § Cross-page CSS-background
+   reuse; module detection consumes the same signal at finer
+   granularity).
+4. **`pages/<slug>.json#forms[]` actions** — cross-page repeats
+   of the same form `action` URL. Newsletter / contact / search
+   forms are the typical hits.
+5. **`pages/<slug>.json#components.componentsByLandmark`** when
+   present (per future `current-state-schema.md` extension):
+   per-landmark counts of cards / grids / etc.
+6. **Substring search in `landmarks[].innerText`** — lowest
+   signal. Use only as corroboration once a candidate has
+   already passed the higher-signal checks; never as the
+   primary detector.
+
+A candidate that fires on signals 1 + 2 above the threshold is
+high-confidence; a candidate that fires only on 6 should be
+treated as speculative and surfaced as such for the user to
+confirm in `direct --prep`.
 
 Candidate output is a draft entry under
 `DESIGN.json.extensions.modules[]`:

@@ -327,6 +327,26 @@ For each page, capture:
     applied via `background-image` (parallax sections, full-bleed
     sections) are silently invisible to extract — `STARDUST-FEEDBACK.md
     F-018 / X-1`.
+
+    **Pseudo-element walk.** `document.querySelectorAll('*')` does
+    not reach `::before` / `::after` generated content, so a hero
+    photo set on a pseudo (a common WordPress / page-builder
+    pattern) silently drops out of capture. For every element
+    surviving the visible-size filter, additionally check both
+    `getComputedStyle(el, '::before').backgroundImage` and
+    `getComputedStyle(el, '::after').backgroundImage`. When the
+    pseudo carries a non-`none` value with one or more `url(...)`
+    references, emit a separate `cssBackgrounds[]` entry with
+    `domPath = "<host-path>::before"` (or `::after`), the host
+    element's rect (the pseudo doesn't have its own rect at this
+    granularity), and the pseudo's `backgroundSize` /
+    `backgroundPosition` / `backgroundRepeat`. The 2026-05-04
+    ups.com home dropped its hero this way: zero `cssBackgrounds[]`
+    hits for the home, prototype defaulted to the `og:image`
+    instead of the actual visible hero. Performance: the pseudo
+    walk runs only on elements that already passed the rect-size
+    filter, so the cost on a typical 4000-element page is in the
+    low-millisecond range, not seconds.
 12. **Form inventory** — for every `<form>`: action, method, list of
     fields with type and name; whether it's wired to an obvious
     third-party (Stripe, Calendly, Typeform, Mailchimp).
@@ -342,6 +362,69 @@ For each page, capture:
     no design tokens. An empty list across all extracted pages is the
     signal "no tokens defined."
 
+16. **Font files (network-intercept).** Subscribe to
+    `context.on('response', ...)` for the duration of the run.
+    Save every response whose URL matches `\.(woff2?|ttf|otf|eot)$`
+    or whose `Content-Type` starts with `font/` to
+    `stardust/current/assets/fonts/<basename>`. De-dupe by URL
+    across pages — the same font fetched on three pages saves
+    once. Record per font in `_brand-extraction.json#type.files[]`:
+    `{ url, family, weight, style, unicodeRange, localPath,
+    sourceCssRule }`. Resolve `family` / `weight` / `style` by
+    finding the `@font-face` block in any captured stylesheet that
+    references the same URL — the rule's font descriptors are the
+    authoritative metadata.
+
+    Without this capture every prototype falls back to a `system-ui`
+    / `Helvetica Neue` stack and the Mode A "brand-faithful" claim
+    weakens visibly on any site whose typography is the most
+    distinctive thing about it (private cuts on commercial brands,
+    Google-Font-but-licenced-elsewhere combinations on agency
+    sites, etc.). The 2026-05-03 jfkairport.com run had two
+    private cuts (Sharp Grotesk Semibold, Helvetica Now for PANYNJ)
+    visible in network responses and absent from every captured
+    artifact until added by a one-off script.
+
+    Captured fonts are sometimes private brand assets. Flag any
+    font whose family name does not match a known open-license
+    list (Google Fonts, Adobe Fonts free tier, fontsource.org
+    catalogue) in `_brand-extraction.json#type.files[].licensingFlag`
+    so the user can verify usage rights before deploying. Internal
+    prototype review is generally fine — the files are already
+    publicly served by the source site.
+
+17. **Icon font detection.** Many production sites ship an icon
+    font (a single woff2 carrying tens to hundreds of glyphs)
+    rather than inline SVG. Without a detector for this, prototypes
+    on icon-font sites render with emoji stand-ins (♿, 🔍, →, f,
+    𝕏) that read as visibly amateur in a brand-faithful Mode A
+    output. Detection:
+
+    - Query every element matching
+      `[class^="icon-"], [class*=" icon-"], i.icon, [data-icon]`.
+    - For each matched element, read the computed `::before`
+      `font-family` and `content` properties. When `font-family`
+      is non-default (i.e. not in `system-ui, sans-serif, Arial`,
+      etc.) and `content` is a quoted Unicode codepoint (not
+      `none`, `""`, or visible text), the element uses an icon
+      font.
+    - Build the icon-class → codepoint table from the unique
+      `(class, content)` pairs.
+    - Resolve the icon font's URL via the `@font-face` rule for
+      that family and save the file via the network-intercept
+      from § 16.
+
+    Record in `_brand-extraction.json#iconFont`:
+    `{ family, localPath, sourceCss, glyphs: [{ class, codepoint, name? }] }`.
+    Optional `name` is a heuristic guess from the class suffix
+    (`icon-search` → `"search"`, `icon-arrow-right` → `"arrow-right"`).
+
+    When `inlineSvgCount < 5` on a page but `[class*="icon-" i]`
+    elements with non-default `::before` font-family are present,
+    surface in the brand-review HTML: *"icon font detected
+    (`<family>`, N distinct classes used) — see
+    `_brand-extraction.json#iconFont` for the mapping."*
+
 ## Logo locator chain
 
 For the brand-surface pass (Phase 3 of `extract`), find the logo in
@@ -351,9 +434,33 @@ this exact priority order. Stop at the first hit.
    or `nav` that is not an icon (heuristic: width or viewBox-derived
    width ≥ 60 px and contains `<text>` or has `aria-label` matching
    the brand name).
-2. **`<img>` with logo-ish identifier** — `img` whose `src`, `alt`,
-   `class`, or `id` contains `logo`, `brand`, or the brand name slug
-   (case-insensitive). Inside `header`, `[role="banner"]`, or `nav`.
+2. **`<img>` with logo-ish identifier** — `<img>` whose `src`, `alt`,
+   `class`, or `id` contains `logo`, `brand`, or the brand name
+   slug (case-insensitive), inside `header`, `[role="banner"]`, or
+   `nav`. **Additionally**, all of the following must hold,
+   otherwise fall through to step 3:
+   - rendered `height ≥ 32 px` AND rendered `width ≥ 40 px` —
+     filters tiny promotional icons that happen to share the
+     brand-name substring (e.g. `ups-package-ontime-box-fast.avif`
+     in a UPS utility bar at 24×24).
+   - `top ≤ 200 px` after the wait+scroll pass — filters images
+     that happen to be inside `<header>` markup but render far
+     below the visible header band.
+   - rendered aspect ratio in `[0.5, 3.0]` — covers square
+     wordmarks (1:1) through wide signature wordmarks (3:1)
+     while excluding tall column glyphs and wide spacer SVGs.
+
+   When multiple candidates qualify, **rank by aspect-ratio
+   proximity to a 1.5 ideal** (most logos cluster between 1.0 and
+   2.5; 1.5 is the centre) and pick the closest. Tie-breaker:
+   highest rendered area.
+
+   The 32 px height threshold is conservative — most real logos
+   render at 40–80 px even in tight headers. Sites that intentionally
+   ship sub-32 px logos on desktop fall through to step 3
+   (`apple-touch-icon`), which is correct most of the time;
+   surface in `_brand-extraction.json#logo._provenance.notes`
+   when this happens so the user can verify.
 3. **`apple-touch-icon`** — `<link rel="apple-touch-icon">` href.
    Resolve relative to base URL.
 4. **`og:image`** — `<meta property="og:image">` content.
