@@ -33,6 +33,7 @@ Execute admin operations on AEM Edge Delivery Services projects using natural la
 | **Sitemap Config** | `show sitemap config`, `update sitemap config` |
 | **Versioning** | `list versions`, `restore version`, `rollback config` |
 | **Pages** | `list pages`, `list all pages`, `show indexed pages` |
+| **DA (Document Authoring)** | `da list`, `da source /path`, `da copy`, `da move`, `da delete`, `da config`, `da versions`, `da preview`, `da publish` |
 
 Type `help` for the full command list.
 
@@ -86,6 +87,35 @@ The Admin API defines 8 roles:
 | `config_admin` | Full config management |
 
 If an operation returns 403, you need a role with that permission.
+
+## Document Authoring (DA)
+
+For sites using Document Authoring (DA) instead of SharePoint/Google Drive, prefix commands with `da`:
+
+```
+# DA content operations
+/ops da list                      # List DA organizations
+/ops da list /blog                # List files in a folder
+/ops da source /index.html        # View file content
+/ops da copy /template to /new    # Copy (uses form-data)
+/ops da move /old to /new         # Move/rename (uses form-data)
+/ops da delete /drafts/old.html   # Delete (confirmation required)
+
+# DA versioning
+/ops da versions /page.html       # List file versions
+/ops da create version /page.html # Create labeled snapshot
+/ops da restore version X         # Restore a previous version
+
+# DA config
+/ops da config                    # View site config
+/ops da update config             # Update site config (sheet format)
+
+# Preview/publish DA content (uses x-content-source-authorization header)
+/ops da preview /page
+/ops da publish /page
+```
+
+**Note:** DA API (admin.da.live) uses form-data for copy, move, config, and content uploads — not JSON bodies. The skill handles this automatically.
 
 ## Troubleshooting
 

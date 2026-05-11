@@ -34,7 +34,7 @@ Execute admin operations on AEM Edge Delivery Services projects using natural la
 | **Sitemap Config** | show sitemap config, update sitemap config (sitemap.yaml) |
 | **Versioning** | list versions, restore version, rollback config |
 | **Pages** | list pages, list all pages, show indexed pages |
-| **DA (Document Authoring)** | da list, da source /path, da copy, da move, da delete, da config, da versions, da auth |
+| **DA (Document Authoring)** | da list, da source /path, da copy, da move, da delete, da config, da update config, da versions, da create version, da upload media, da auth |
 
 ---
 
@@ -246,8 +246,11 @@ Read `resources/config.md` for setup instructions if site or other values are mi
 
 1. Read the appropriate resource file from `resources/`
 2. Follow instructions in that resource
-3. Execute the API call
-4. Handle response per completion standards below
+3. **For config updates**: Always GET current config first and show it to the user before modifying
+4. **For code sync**: Always check repoless status before syncing (see `code.md`)
+5. **For destructive operations**: Follow the Confirmation Protocol — no exceptions
+6. Execute the API call
+7. Handle response per completion standards below
 
 ### Completion Standards
 
@@ -338,10 +341,12 @@ Read `resources/config.md` for setup instructions if site or other values are mi
 - Actions: list, show, filter
 
 ### Document Authoring (DA)
-- Keywords: da, da list, da source, da content, da files, da copy, da move, da delete, da config, da versions, da auth, da login
+- Keywords: da, da list, da source, da content, da files, da copy, da move, da delete, da config, da update config, da versions, da create version, da upload, da media, da auth, da login
 - Prefix: "da " before any action indicates DA admin API (admin.da.live)
-- Actions: list, get, source, copy, move, delete, config, versions, restore, auth, login
-- Note: Requires IMS token authentication (different from admin.hlx.page)
+- Actions: list, get, source, copy, move, delete, config, versions, create version, restore, upload, media, auth, login
+- Note: Requires IMS token authentication (same IMS token, different API base URL from admin.hlx.page)
+- Note: Copy/move use form-data with `destination` field (not JSON). Config uses form-data with `config` field.
+- Note: No dedicated restore endpoint — restore is: list versions → get version content → write back to source
 
 ### Help
 - Triggers: `help`, `what can you do?`, `/ops help`, `/ops what can you do?`, "list commands", "show available commands" — show the **Help Response** block in this file (no resource module).
@@ -367,6 +372,24 @@ Read `resources/config.md` for setup instructions if site or other values are mi
 | Delete secret | `secrets.md` | HIGH - Can break integrations |
 | Revoke API key | `apikeys.md` | HIGH - Can break CI/CD |
 | DA delete | `da.md` | HIGH - Permanently deletes from DA |
+| DA copy/move (overwrite) | `da.md` | MEDIUM - Can overwrite destination |
+| DA update config | `da.md` | HIGH - Can lock out all users if CONFIG write permission missing |
+| Revoke token | `tokens.md` | HIGH - Can break access |
+| Delete config version | `versioning.md` | MEDIUM - Permanently removes config history |
+| Restore config version | `versioning.md` | HIGH - Replaces current config |
+| Config update (org/site) | `config-api.md` | HIGH - Can break site if malformed |
+
+### Non-Destructive but Dangerous Operations
+
+These operations don't delete anything but can still cause outages if misused:
+
+| Operation | Risk | Guardrail |
+|-----------|------|-----------|
+| **Config update (POST)** | Malformed config can break the entire site | Always GET current config first, show to user, confirm change before POST |
+| **Code sync in repoless** | Affects ALL sites sharing the repo | Always check site count first; warn and list all sites if > 1 |
+| **Bulk preview/publish (> 50 paths)** | Large jobs tie up resources and can fail partially | Show path list, confirm, suggest batching for > 100 paths |
+| **Wildcard bulk operations** | Can trigger thousands of jobs | Explain that `/*` creates an async job that may process all pages |
+| **DA config update** | Must include CONFIG write permission or locks out everyone | Validate config JSON includes a CONFIG write entry before sending |
 
 ### Confirmation Protocol
 
@@ -383,6 +406,46 @@ Before ANY destructive operation:
 - This directory MUST be in `.gitignore`
 - Tokens expire after ~24 hours
 - Never log or display full token values
+- Never store secret values, API keys, or access token values in config files
+
+### Secret / API Key / Token Creation Safety
+
+Secrets, API keys, and access tokens return their value **only once** at creation.
+
+Before creating:
+1. Warn the user: "The value will only be shown once. Make sure you're ready to store it securely."
+2. Only proceed after user confirms they are ready.
+
+After creation:
+1. Display the value clearly and instruct: "Copy this value now. It cannot be retrieved again."
+2. Never store the returned value in `.claude-plugin/project-config.json` or any tracked file.
+
+### Config Update Safety
+
+Before ANY config update (org, site, profile, or DA config):
+
+1. **Always GET the current config first** — show it to the user so they understand the current state.
+2. **Show the proposed change** — present a clear diff or summary of what will change.
+3. **Warn about potential impact** — a malformed config body can break the site.
+4. **For DA config updates** — the config JSON **must** include at least one entry granting CONFIG write permission. Sending a config without it will lock everyone out (requires Cloudflare KV escalation to fix).
+
+### Publish Safety
+
+- If user says "publish" without a preceding preview, suggest: "Do you want me to preview first, then publish?"
+- For bulk operations > 50 paths, always show the path list and ask for confirmation.
+- For wildcard bulk operations (`/*`), explain that this creates an async job and may process thousands of pages.
+
+### Error Recovery
+
+| Scenario | Recovery |
+|----------|----------|
+| Accidental unpublish | Re-publish: `POST /live/{org}/{site}/{ref}/{path}` |
+| Accidental config delete | Restore from version: `POST /config/{org}.json?restoreVersion={id}` (list versions first) |
+| Accidental secret/key delete | Cannot be recovered — create a new one and update all integrations |
+| Bad config update broke site | List config versions, find last good one, restore it |
+| Bulk job running wild | Stop it: `DELETE /job/{org}/{site}/{ref}/{topic}/{jobName}` |
+| DA content accidentally deleted | Check if a version exists via `/versionlist/` — restore from version if available |
+| DA config locked everyone out | Requires Cloudflare KV access to fix — escalate to DA admin team |
 
 ---
 
@@ -536,8 +599,13 @@ Document Authoring (DA):
   da copy /src to /dest  - Copy file/folder in DA
   da move /src to /dest  - Move/rename in DA
   da delete /path        - Delete from DA
+  da upload /path        - Upload content to DA
+  da upload media /path  - Upload image/media to DA
   da config              - View DA site config
+  da update config       - Update DA site config
   da versions /path      - List file versions
+  da create version      - Create labeled version snapshot
+  da restore version X   - Restore a previous version
   da preview /path       - Preview DA content
   da publish /path       - Publish DA content
 ```
