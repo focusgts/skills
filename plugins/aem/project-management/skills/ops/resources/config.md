@@ -10,16 +10,31 @@ Shared configuration loading and setup for all ops operations.
 
 ## Load Configuration
 
+All ops config lives in `~/.aem/ops-config.json`.
+
 ```bash
-eval $(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
-  const d = require('fs').readFileSync(0,'utf8');
-  const c = JSON.parse(d);
-  console.log('ORG=' + JSON.stringify(c.org || ''));
-  console.log('IMS_TOKEN=' + JSON.stringify(c.imsToken || ''));
-  console.log('SITE=' + JSON.stringify(c.site || ''));
-  console.log('REF=' + JSON.stringify(c.ref || 'main'));
-  console.log('CODE_OWNER=' + JSON.stringify(c.codeOwner || ''));
-  console.log('CODE_REPO=' + JSON.stringify(c.codeRepo || ''));
+eval $(node -e "
+  const fs = require('fs');
+  try {
+    const c = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ops-config.json', 'utf8'));
+    console.log('ORG=' + JSON.stringify(c.org || ''));
+    console.log('SITE=' + JSON.stringify(c.site || ''));
+    console.log('REF=' + JSON.stringify(c.ref || 'main'));
+    console.log('CODE_OWNER=' + JSON.stringify(c.codeOwner || ''));
+    console.log('CODE_REPO=' + JSON.stringify(c.codeRepo || ''));
+  } catch(e) {
+    console.log('ORG='); console.log('SITE='); console.log('REF=main');
+    console.log('CODE_OWNER='); console.log('CODE_REPO=');
+  }
+")
+IMS_TOKEN=$(node -e "
+  const fs = require('fs');
+  try {
+    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
+    if (t.imsToken && t.imsTokenExpiry > Math.floor(Date.now()/1000) + 60) {
+      process.stdout.write(t.imsToken);
+    }
+  } catch (e) {}
 ")
 
 echo "org=$ORG"
@@ -36,12 +51,18 @@ echo "codeRepo=$CODE_REPO"
 
 **Note:** Org name check happens in the router (SKILL.md Step 0). This section is for saving the value after user provides it.
 
-Save org name:
+Save org name to `~/.aem/ops-config.json` (works from any directory):
 
 ```bash
-mkdir -p .claude-plugin
-grep -qxF '.claude-plugin/' .gitignore 2>/dev/null || echo '.claude-plugin/' >> .gitignore
-echo '{"org": "{ORG_NAME}"}' > .claude-plugin/project-config.json
+mkdir -p "${HOME}/.aem"
+node -e "
+  const fs = require('fs');
+  const p = process.env.HOME + '/.aem/ops-config.json';
+  let c = {};
+  try { c = JSON.parse(fs.readFileSync(p, 'utf8')); } catch(e) {}
+  c.org = '{ORG_NAME}';
+  fs.writeFileSync(p, JSON.stringify(c, null, 2));
+"
 ```
 
 ### Authentication
@@ -55,9 +76,12 @@ Skill({ skill: "project-management:auth" })
 ### Site Detection
 
 ```bash
-ORG=$(cat .claude-plugin/project-config.json | node -e "
-  const d = require('fs').readFileSync(0,'utf8');
-  console.log(JSON.parse(d).org || '');
+ORG=$(node -e "
+  const fs = require('fs');
+  try {
+    const c = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ops-config.json', 'utf8'));
+    process.stdout.write(c.org || '');
+  } catch(e) {}
 ")
 
 SITES_JSON=$(curl -s "https://admin.hlx.page/config/${ORG}/sites.json")
@@ -78,12 +102,22 @@ echo "$SITE_NAMES"
 ### Code Repository (For Code Sync)
 
 ```bash
-eval $(cat .claude-plugin/project-config.json | node -e "
-  const d = require('fs').readFileSync(0,'utf8');
-  const c = JSON.parse(d);
-  console.log('IMS_TOKEN=' + JSON.stringify(c.imsToken || ''));
-  console.log('ORG=' + JSON.stringify(c.org || ''));
-  console.log('SITE=' + JSON.stringify(c.site || ''));
+eval $(node -e "
+  const fs = require('fs');
+  try {
+    const c = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ops-config.json', 'utf8'));
+    console.log('ORG=' + JSON.stringify(c.org || ''));
+    console.log('SITE=' + JSON.stringify(c.site || ''));
+  } catch(e) { console.log('ORG='); console.log('SITE='); }
+")
+IMS_TOKEN=$(node -e "
+  const fs = require('fs');
+  try {
+    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
+    if (t.imsToken && t.imsTokenExpiry > Math.floor(Date.now()/1000) + 60) {
+      process.stdout.write(t.imsToken);
+    }
+  } catch (e) {}
 ")
 
 SITE_CONFIG=$(curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json")
@@ -94,8 +128,8 @@ eval $(echo "$SITE_CONFIG" | node -e "
   console.log('CODE_REPO=' + JSON.stringify(c.code?.repo || ''));
 ")
 
-# Update config file with code owner/repo
-# Agent should use Edit tool to update .claude-plugin/project-config.json with codeOwner and codeRepo values
+# Save code owner/repo to ~/.aem/ops-config.json
+# Agent should update the file with codeOwner and codeRepo values
 ```
 
 ## Permission Check
@@ -142,10 +176,11 @@ echo "User: $USER_EMAIL | roles on site: ${ROLES_ON_SITE:-—} | IS_ADMIN=$IS_AD
 
 ## Config Structure
 
+Ops config (`~/.aem/ops-config.json`) stores project context — no tokens:
+
 ```json
 {
   "org": "myorg",
-  "imsToken": "...",
   "site": "site-a",
   "sites": ["site-a", "site-b"],
   "isRepoless": true,
@@ -154,3 +189,5 @@ echo "User: $USER_EMAIL | roles on site: ${ROLES_ON_SITE:-—} | IS_ADMIN=$IS_AD
   "codeRepo": "shared-eds-code"
 }
 ```
+
+Auth token is stored separately at `~/.aem/ims-token.json`. See the auth skill for details.

@@ -149,17 +149,17 @@ Replace `{ORG_NAME}` with the actual organization name provided by the user.
 #### 1.6.1 Check for Existing Auth Token
 
 ```bash
-IMS_TOKEN=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
-  const d = require('fs').readFileSync(0,'utf8');
-  try { console.log(JSON.parse(d).imsToken || ''); } catch(e) { console.log(''); }
+IMS_TOKEN=$(node -e "
+  const fs = require('fs');
+  try {
+    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
+    if (t.imsToken && t.imsTokenExpiry > Math.floor(Date.now()/1000) + 60) {
+      process.stdout.write(t.imsToken);
+    }
+  } catch (e) {}
 ")
-IMS_EXPIRY=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
-  const d = require('fs').readFileSync(0,'utf8');
-  try { console.log(JSON.parse(d).imsTokenExpiry || 0); } catch(e) { console.log(0); }
-")
-NOW=$(date +%s)
 
-if [ -n "$IMS_TOKEN" ] && [ "$IMS_EXPIRY" -gt "$((NOW + 60))" ]; then
+if [ -n "$IMS_TOKEN" ]; then
   echo "Token valid"
 else
   echo "Token missing or expired. Need to authenticate."
@@ -177,7 +177,7 @@ Skill({ skill: "project-management:auth" })
 This will:
 1. Open a browser for Adobe ID login
 2. Capture the IMS OAuth token automatically
-3. Save token to `.claude-plugin/project-config.json`
+3. Save token to `~/.aem/ims-token.json` (user-level, shared across projects)
 4. Auto-close the browser when complete
 
 **Why authenticate in orchestrator:** By authenticating once here, all sub-skills running in parallel can use the saved token without each prompting for login separately.

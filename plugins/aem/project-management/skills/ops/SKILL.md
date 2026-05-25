@@ -83,21 +83,45 @@ Analyze user request and load the appropriate resource module.
 
 ### Step 0: Get Organization Name (REQUIRED FIRST)
 
-**Before ANY operation**, check if org name exists in saved config:
+**Before ANY operation**, check `~/.aem/ops-config.json` for a previously stored org:
 
 ```bash
-ORG=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
-  const d = require('fs').readFileSync(0,'utf8');
-  try { console.log(JSON.parse(d).org || ''); } catch(e) { console.log(''); }
+ORG=$(node -e "
+  const fs = require('fs');
+  try {
+    const c = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ops-config.json', 'utf8'));
+    process.stdout.write(c.org || '');
+  } catch(e) {}
 ")
 echo "org=${ORG:-NOT SET}"
 ```
 
-**If `ORG` is empty**, you MUST pause and ask the user:
+**If `ORG` is set**, confirm with the user:
+
+> "Previously used org: `{ORG}`. Do you want to continue with this org, or use a different one?"
+
+- If user confirms → proceed
+- If user provides a different org → save the new value
+
+**If `ORG` is empty**, ask the user:
 
 > "What is your Config Service organization name? This is the `{org}` part of your Edge Delivery Services URLs (e.g., `https://main--site--{org}.aem.page`).
 >
 > **Note:** The org name may differ from your GitHub organization, especially in repoless multi-site setups."
+
+**Save org to `~/.aem/ops-config.json`:**
+
+```bash
+mkdir -p "${HOME}/.aem"
+node -e "
+  const fs = require('fs');
+  const p = process.env.HOME + '/.aem/ops-config.json';
+  let c = {};
+  try { c = JSON.parse(fs.readFileSync(p, 'utf8')); } catch(e) {}
+  c.org = '{ORG_NAME}';
+  fs.writeFileSync(p, JSON.stringify(c, null, 2));
+"
+```
 
 **STRICTLY FORBIDDEN - Do NOT attempt any of these to get org name:**
 - `git remote -v` - GitHub org often differs from Config Service org
@@ -106,7 +130,7 @@ echo "org=${ORG:-NOT SET}"
 - Any other inference method
 
 **ONLY use the org name from:**
-- Saved config (`.claude-plugin/project-config.json`)
+- Saved config (`~/.aem/ops-config.json`)
 - Direct user input when prompted
 
 **Do NOT proceed until org is confirmed.**
@@ -116,9 +140,14 @@ echo "org=${ORG:-NOT SET}"
 **Before ANY API call**, check if IMS token exists:
 
 ```bash
-IMS_TOKEN=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
-  const d = require('fs').readFileSync(0,'utf8');
-  try { console.log(JSON.parse(d).imsToken || ''); } catch(e) { console.log(''); }
+IMS_TOKEN=$(node -e "
+  const fs = require('fs');
+  try {
+    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
+    if (t.imsToken && t.imsTokenExpiry > Math.floor(Date.now()/1000) + 60) {
+      process.stdout.write(t.imsToken);
+    }
+  } catch (e) {}
 ")
 echo "auth=${IMS_TOKEN:+set}"
 ```
@@ -133,17 +162,26 @@ Skill({ skill: "project-management:auth" })
 
 ### Step 2: Load Full Configuration and Validate Role
 
-After auth is confirmed, load config:
+After auth is confirmed, load full config from `~/.aem/ops-config.json`:
 
 ```bash
-CONFIG_JSON=$(cat .claude-plugin/project-config.json 2>/dev/null)
-eval $(echo "$CONFIG_JSON" | node -e "
-  const d = require('fs').readFileSync(0,'utf8');
-  const c = JSON.parse(d);
-  console.log('ORG=' + JSON.stringify(c.org || ''));
-  console.log('IMS_TOKEN=' + JSON.stringify(c.imsToken || ''));
-  console.log('SITE=' + JSON.stringify(c.site || ''));
-  console.log('REF=' + JSON.stringify(c.ref || 'main'));
+eval $(node -e "
+  const fs = require('fs');
+  try {
+    const c = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ops-config.json', 'utf8'));
+    console.log('ORG=' + JSON.stringify(c.org || ''));
+    console.log('SITE=' + JSON.stringify(c.site || ''));
+    console.log('REF=' + JSON.stringify(c.ref || 'main'));
+  } catch(e) {
+    console.log('ORG='); console.log('SITE='); console.log('REF=main');
+  }
+")
+IMS_TOKEN=$(node -e "
+  const fs = require('fs');
+  try {
+    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
+    process.stdout.write(t.imsToken || '');
+  } catch (e) {}
 ")
 echo "Config: org=$ORG site=$SITE ref=$REF auth=${IMS_TOKEN:+set}"
 ```
@@ -159,16 +197,7 @@ PROFILE=$(echo "$PROFILE_RESPONSE" | sed '$d')
 
 if [ "$HTTP_CODE" = "401" ]; then
   echo "Auth token expired. Clearing cached token..."
-  # Remove expired token from config
-  node -e "
-    const fs = require('fs');
-    const p = '.claude-plugin/project-config.json';
-    let c = {};
-    try { c = JSON.parse(fs.readFileSync(p, 'utf8')); } catch(e) {}
-    delete c.imsToken;
-    delete c.imsTokenExpiry;
-    fs.writeFileSync(p, JSON.stringify(c, null, 2));
-  " 2>/dev/null
+  rm -f "${HOME}/.aem/ims-token.json"
   echo "REAUTH_REQUIRED"
   exit 1
 elif [ "$HTTP_CODE" != "200" ]; then
@@ -211,7 +240,7 @@ If an operation returns 403, inform the user which role is required. Key role re
 
 Do not block all operations because role cannot be pre-determined — let the API enforce permissions and surface 403 errors.
 
-Save `email` to `.claude-plugin/project-config.json` for future use.
+Save `email` to `~/.aem/ops-config.json` for future use.
 
 Read `resources/config.md` for setup instructions if site or other values are missing.
 
@@ -407,8 +436,8 @@ Before ANY destructive operation:
 
 ### Token Security
 
-- Auth tokens are stored in `.claude-plugin/project-config.json`
-- This directory MUST be in `.gitignore`
+- Auth token is stored at the user level in `~/.aem/ims-token.json` (not in project-config)
+- `.claude-plugin/` directory MUST be in `.gitignore` (contains org/site context)
 - Tokens expire after ~24 hours
 - Never log or display full token values
 - Never store secret values, API keys, or access token values in config files

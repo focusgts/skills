@@ -210,17 +210,17 @@ Multiple sites = **repoless** setup. Single site = **standard** setup.
 First, check for valid auth token:
 
 ```bash
-IMS_TOKEN=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
-  const d = require('fs').readFileSync(0,'utf8');
-  try { console.log(JSON.parse(d).imsToken || ''); } catch(e) { console.log(''); }
+IMS_TOKEN=$(node -e "
+  const fs = require('fs');
+  try {
+    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
+    if (t.imsToken && t.imsTokenExpiry > Math.floor(Date.now()/1000) + 60) {
+      process.stdout.write(t.imsToken);
+    }
+  } catch (e) {}
 ")
-IMS_EXPIRY=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
-  const d = require('fs').readFileSync(0,'utf8');
-  try { console.log(JSON.parse(d).imsTokenExpiry || 0); } catch(e) { console.log(0); }
-")
-NOW=$(date +%s)
 
-if [ -z "$IMS_TOKEN" ] || [ "$IMS_EXPIRY" -lt "$((NOW + 60))" ]; then
+if [ -z "$IMS_TOKEN" ]; then
   echo "AUTH_REQUIRED"
 fi
 ```
@@ -234,9 +234,12 @@ Skill({ skill: "project-management:auth" })
 Then fetch site config:
 
 ```bash
-IMS_TOKEN=$(cat .claude-plugin/project-config.json | node -e "
-  const d = require('fs').readFileSync(0,'utf8');
-  console.log(JSON.parse(d).imsToken);
+IMS_TOKEN=$(node -e "
+  const fs = require('fs');
+  try {
+    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
+    process.stdout.write(t.imsToken || '');
+  } catch (e) {}
 ")
 curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/{site-name}.json"
 ```
