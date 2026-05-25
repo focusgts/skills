@@ -31,19 +31,21 @@ Bundle multiple content changes for coordinated publishing.
 ### List All Snapshots
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/snapshot/${ORG}/${SITE}/main"
 ```
 
-**Response format:** Present as table — ID | Title | Status | Created
+**Response shape:** `{"snapshots": [...], "links": {...}}`. Empty state returns `{"snapshots": [], "links": {...}}`.
+
+**Present as table:** ID | Title | Status | Created (iterate over `snapshots[]`)
 
 ### Create/Update Snapshot Manifest
 
 Creates a new snapshot or updates metadata on an existing one. Also used to lock/unlock: set `"locked": true` to lock for review (requires `preview:write`), `"locked": false` to unlock (requires `live:write`).
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"title": "Q2 Launch", "description": "Product pages for Q2 release"}' \
@@ -55,7 +57,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 ### Get Snapshot Manifest
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/snapshot/${ORG}/${SITE}/main/${SNAPSHOT_ID}"
 ```
@@ -63,7 +65,7 @@ curl -s --connect-timeout 15 --max-time 120 \
 ### Add Resource to Snapshot
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/snapshot/${ORG}/${SITE}/main/${SNAPSHOT_ID}${PATH}"
 ```
@@ -73,7 +75,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 ### Bulk Add Resources
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"paths": ["/products/new-widget", "/products/new-gadget", "/blog/announcement"]}' \
@@ -90,7 +92,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/snapshot/${ORG}/${SITE}/main/${SNAPSHOT_ID}${PATH}"
 ```
@@ -107,7 +109,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/snapshot/${ORG}/${SITE}/main/${SNAPSHOT_ID}"
 ```
@@ -115,7 +117,7 @@ curl -s --connect-timeout 15 --max-time 120 -X DELETE \
 ### Publish Single Resource
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/snapshot/${ORG}/${SITE}/main/${SNAPSHOT_ID}${PATH}?publish=true"
 ```
@@ -123,7 +125,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 ### Publish Entire Snapshot
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/snapshot/${ORG}/${SITE}/main/${SNAPSHOT_ID}?publish=true"
 ```
@@ -135,7 +137,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 Locks the snapshot for review. Requires `preview:write` permission → `author`, `publish`, or `admin` role.
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/snapshot/${ORG}/${SITE}/main/${SNAPSHOT_ID}?review=request"
 ```
@@ -147,7 +149,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 Publishes all resources, clears the snapshot, and unlocks it. Requires `live:write` permission → `publish` or `admin` role.
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/snapshot/${ORG}/${SITE}/main/${SNAPSHOT_ID}?review=approve"
 ```
@@ -159,7 +161,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 Unlocks the snapshot without publishing. Requires `live:write` permission → `publish` or `admin` role.
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/snapshot/${ORG}/${SITE}/main/${SNAPSHOT_ID}?review=reject"
 ```

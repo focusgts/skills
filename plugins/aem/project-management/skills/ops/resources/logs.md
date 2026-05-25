@@ -24,28 +24,52 @@ View and manage audit logs for Edge Delivery Services.
 ### View Logs (Default: last 15 minutes)
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}"
 ```
 
-**Response format:** Present as table — Timestamp | Operation | Path | User
+**Response shape:** Wrapper object with time bounds and an `entries` array.
+```json
+{
+  "from": "{iso-timestamp}",
+  "to": "{iso-timestamp}",
+  "entries": [
+    {
+      "timestamp": 0,
+      "method": "POST",
+      "route": "preview",
+      "path": "/",
+      "status": 200,
+      "duration": 0,
+      "user": "{email}",
+      "org": "{org}",
+      "site": "{site}",
+      "ref": "{ref}"
+    }
+  ]
+}
+```
+
+**Note:** `timestamp` is a Unix epoch in milliseconds. The `route` field identifies the API surface (e.g. `preview`, `live`, `code`, `preview-job`). Some entries also carry a `job` field linking to a tracked bulk job, or `paths` for bulk requests.
+
+**Present as table:** Timestamp | Method | Route | Path | Status | User
 
 ### View Logs with Duration Filter
 
 ```bash
 # Last hour
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}?since=1h"
 
 # Last 24 hours
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}?since=24h"
 
 # Last 3 days
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}?since=3d"
 ```
@@ -53,7 +77,7 @@ curl -s --connect-timeout 15 --max-time 120 \
 ### View Logs with Time Range
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}?from=2024-01-01T00:00:00Z&to=2024-01-02T00:00:00Z"
 ```
@@ -61,7 +85,7 @@ curl -s --connect-timeout 15 --max-time 120 \
 ### Add Log Entry
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"entries": [{"event": "Manual deployment completed"}]}' \
@@ -99,7 +123,7 @@ For large log sets, the response includes a `nextToken` and `links.next` URL. To
 
 ```bash
 NEXT_TOKEN="ABAB=="  # from previous response
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}?nextToken=${NEXT_TOKEN}"
 ```

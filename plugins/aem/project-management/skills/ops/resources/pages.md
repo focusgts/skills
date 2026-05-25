@@ -17,7 +17,7 @@ List all indexed pages for a site using the query-index.
 
 ```bash
 # Fetch query-index.json (no auth required)
-curl -s --connect-timeout 15 --max-time 120 "https://${REF}--${SITE}--${ORG}.aem.page/query-index.json"
+curl -s "https://${REF}--${SITE}--${ORG}.aem.page/query-index.json"
 ```
 
 **Response format:** Present as table — # | Path | Title | Preview URL | Live URL
@@ -32,7 +32,7 @@ If response contains error or no `data` array, inform user:
 Filter by path prefix (e.g., `/blog`, `/products`):
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 "https://${REF}--${SITE}--${ORG}.aem.page/query-index.json"
+curl -s "https://${REF}--${SITE}--${ORG}.aem.page/query-index.json"
 ```
 
 Filter the response data where `path` starts with the requested prefix. Present matching pages in the same table format.
@@ -43,7 +43,7 @@ If site uses a named index (defined in `query.yaml`):
 
 ```bash
 INDEX_NAME="{INDEX_NAME}"  # e.g., "blog", "products"
-curl -s --connect-timeout 15 --max-time 120 "https://${REF}--${SITE}--${ORG}.aem.page/${INDEX_NAME}.json"
+curl -s "https://${REF}--${SITE}--${ORG}.aem.page/${INDEX_NAME}.json"
 ```
 
 ## Output Format

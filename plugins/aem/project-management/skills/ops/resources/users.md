@@ -56,7 +56,7 @@ All 8 official roles, from the [Admin Roles documentation](https://www.aem.live/
 Roles are assigned in the `access.admin.role` section of the site config:
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -80,7 +80,7 @@ Wildcard patterns are supported: `"*@example.com"` gives all users in that domai
 ### List Users
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/${SITE}/access.json"
 ```
@@ -89,7 +89,7 @@ curl -s --connect-timeout 15 --max-time 120 \
 
 ### Add Admin
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"users": ["user@example.com"]}' \
@@ -100,7 +100,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 
 ### Add Author
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"users": ["user@example.com"]}' \
@@ -118,7 +118,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/${SITE}/access/${ROLE}/${EMAIL}.json"
 ```
@@ -128,7 +128,7 @@ curl -s --connect-timeout 15 --max-time 120 -X DELETE \
 ### Get Current User Profile
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/profile"
 ```
@@ -138,14 +138,14 @@ curl -s --connect-timeout 15 --max-time 120 \
 ### List Org Users
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/users.json"
 ```
 
 ### Add Org User
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com"}' \
@@ -161,7 +161,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/users/${USER_ID}.json"
 ```

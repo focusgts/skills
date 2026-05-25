@@ -48,7 +48,7 @@ Base URL: `https://admin.da.live`
 Show all DA organizations the user has access to.
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/list"
 ```
@@ -67,12 +67,12 @@ List files and folders in a DA path.
 
 ```bash
 # List site root
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/list/${ORG}/${SITE}"
 
 # List specific folder
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/list/${ORG}/${SITE}/blog"
 ```
@@ -102,7 +102,7 @@ curl -s --connect-timeout 15 --max-time 120 \
 Retrieve file content from DA.
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/source/${ORG}/${SITE}/${PATH}"
 ```
@@ -116,13 +116,13 @@ Upload or update content in DA.
 **Preferred method (form-data):**
 ```bash
 # Upload HTML file
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F "data=@content.html" \
   "https://admin.da.live/source/${ORG}/${SITE}/${PATH}"
 
 # Upload JSON file
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F "data=@data.json" \
   "https://admin.da.live/source/${ORG}/${SITE}/data.json"
@@ -130,7 +130,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 
 **Alternative (raw text/html body):**
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: text/html" \
   -d '<html><body><h1>Hello</h1></body></html>' \
@@ -139,7 +139,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 
 **Create folder (POST to path with no body):**
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/source/${ORG}/${SITE}/drafts/new-folder"
 ```
@@ -151,7 +151,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 For images and other media that need processing through the AEM media pipeline, use the `/media/` endpoint:
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F "data=@image.png" \
   "https://admin.da.live/media/${ORG}/${SITE}/media/hero.png"
@@ -170,12 +170,12 @@ Before executing:
 
 ```bash
 # Delete single file
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/source/${ORG}/${SITE}/${PATH}"
 
 # Delete folder (recursive)
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/source/${ORG}/${SITE}/drafts/old-folder"
 ```
@@ -183,7 +183,7 @@ curl -s --connect-timeout 15 --max-time 120 -X DELETE \
 **Folder deletion:** For large folders, the API returns HTTP 206 with a JSON body containing `{"continuationToken": "..."}` indicating more items remain. Pass the token as a form field in the follow-up DELETE request:
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F "continuation-token=${CONTINUATION_TOKEN}" \
   "https://admin.da.live/source/${ORG}/${SITE}/drafts/old-folder"
@@ -206,7 +206,7 @@ Before executing, you MUST:
 4. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F "destination=/${ORG}/${SITE}/${DEST_PATH}" \
   "https://admin.da.live/copy/${ORG}/${SITE}/${SOURCE_PATH}"
@@ -216,7 +216,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 
 **Example:** Copy template to new page
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F "destination=/myorg/mysite/new-page.html" \
   "https://admin.da.live/copy/myorg/mysite/templates/basic.html"
@@ -224,7 +224,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 
 **Example:** Copy to a different folder
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F "destination=/myorg/mysite/archive/article.html" \
   "https://admin.da.live/copy/myorg/mysite/drafts/article.html"
@@ -235,7 +235,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 **Folder copy:** For large folders, the API returns HTTP 206 with a JSON body containing `{"continuationToken": "..."}`. Pass it as a form field in the follow-up request to continue copying:
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F "destination=/myorg/mysite/archive/old-blog" \
   -F "continuation-token=${CONTINUATION_TOKEN}" \
@@ -255,7 +255,7 @@ Before executing, you MUST:
 4. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F "destination=/${ORG}/${SITE}/${DEST_PATH}" \
   "https://admin.da.live/move/${ORG}/${SITE}/${SOURCE_PATH}"
@@ -265,7 +265,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 
 **Example:** Rename file
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F "destination=/myorg/mysite/new-name.html" \
   "https://admin.da.live/move/myorg/mysite/old-name.html"
@@ -273,7 +273,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 
 **Example:** Move to a different folder
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F "destination=/myorg/mysite/archive/2024/article.html" \
   "https://admin.da.live/move/myorg/mysite/drafts/article.html"
@@ -290,7 +290,7 @@ DA automatically creates versions for HTML and JSON files on each save. You can 
 ### List Versions
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/versionlist/${ORG}/${SITE}/${PATH}"
 ```
@@ -332,14 +332,14 @@ Use the `url` from the version list response:
 
 ```bash
 # Get the full URL from the version list entry's "url" field
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live${VERSION_URL}"
 ```
 
 **Example using a version list entry:**
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/versionsource/myorg/mysite/f85f9b05-ae48-485b-a3b3-dd203ac5c734/aa449650-b75c-463b-ae57-15902cd21a86.html"
 ```
@@ -351,7 +351,7 @@ Returns the raw file content at that version.
 Create a labeled version of the current file state. This is useful before making significant changes.
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"label": "Before Major Edit"}' \
@@ -372,19 +372,19 @@ There is no dedicated restore endpoint. To restore a previous version:
 
 ```bash
 # Step 1: List versions and find the target
-VERSIONS=$(curl -s --connect-timeout 15 --max-time 120 \
+VERSIONS=$(curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/versionlist/${ORG}/${SITE}/${PATH}")
 
 # Step 2: Get the version content (use the url field from step 1)
-VERSION_CONTENT=$(curl -s --connect-timeout 15 --max-time 120 \
+VERSION_CONTENT=$(curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live${VERSION_URL}")
 
 # Step 3: Write the content back to the original path
 # Use form-data upload (works for both HTML and JSON files)
 echo "${VERSION_CONTENT}" > /tmp/da-restore-content
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F "data=@/tmp/da-restore-content" \
   "https://admin.da.live/source/${ORG}/${SITE}/${PATH}"
@@ -402,7 +402,7 @@ DA site configuration uses a sheet-based JSON format stored in Cloudflare KV. Co
 ### Get DA Site Config
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/config/${ORG}/${SITE}"
 ```
@@ -434,12 +434,12 @@ Configs can be scoped to directories or specific paths:
 
 ```bash
 # Root config
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/config/${ORG}/${SITE}/config"
 
 # Directory-specific config
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.da.live/config/${ORG}/${SITE}/drafts/config"
 ```
@@ -459,13 +459,13 @@ Before executing, you MUST:
 
 ```bash
 # Multi-sheet config
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F 'config={":names":["permissions","settings"],":type":"multi-sheet","permissions":{"total":1,"data":[{"path":"CONFIG","actions":"write","groups":"admin@example.com"}]},"settings":{"total":1,"data":[{"key":"theme","value":"default"}]}}' \
   "https://admin.da.live/config/${ORG}/${SITE}"
 
 # Single-sheet config (permissions only)
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -F 'config={":sheetname":"permissions",":type":"sheet","total":1,"data":[{"path":"CONFIG","actions":"write","groups":"admin@example.com"}]}' \
   "https://admin.da.live/config/${ORG}/${SITE}/permissions"
@@ -483,13 +483,13 @@ After modifying content in DA, trigger Edge Delivery Services preview/publish:
 
 ```bash
 # Preview DA content
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "x-content-source-authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/preview/${ORG}/${SITE}/${REF}${PATH}"
 
 # Publish DA content
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "x-content-source-authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/live/${ORG}/${SITE}/${REF}${PATH}"

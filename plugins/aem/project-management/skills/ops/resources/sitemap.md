@@ -21,7 +21,7 @@ The `{path}` is the destination path for the sitemap (e.g., `/sitemap.xml`). The
 ### Generate Sitemap
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/sitemap/${ORG}/${SITE}/${REF}${PATH}"
 ```
@@ -35,7 +35,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 Generate sitemap at a specific location:
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/sitemap/${ORG}/${SITE}/${REF}/sitemaps/blog.xml"
 ```

@@ -60,7 +60,7 @@ ORG=$(cat .claude-plugin/project-config.json | node -e "
   console.log(JSON.parse(d).org || '');
 ")
 
-SITES_JSON=$(curl -s --connect-timeout 15 --max-time 120 "https://admin.hlx.page/config/${ORG}/sites.json")
+SITES_JSON=$(curl -s "https://admin.hlx.page/config/${ORG}/sites.json")
 SITE_NAMES=$(echo "$SITES_JSON" | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   const sites = JSON.parse(d).sites || [];
@@ -86,7 +86,7 @@ eval $(cat .claude-plugin/project-config.json | node -e "
   console.log('SITE=' + JSON.stringify(c.site || ''));
 ")
 
-SITE_CONFIG=$(curl -s --connect-timeout 15 --max-time 120 -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json")
+SITE_CONFIG=$(curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json")
 eval $(echo "$SITE_CONFIG" | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   const c = JSON.parse(d);
@@ -105,13 +105,13 @@ Identity comes from `/profile`. Roles on the current site are read from `/config
 Use `node` to parse JSON so nested structures are handled correctly:
 
 ```bash
-PROFILE=$(curl -s --connect-timeout 15 --max-time 120 -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/profile")
+PROFILE=$(curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/profile")
 USER_EMAIL=$(echo "$PROFILE" | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   console.log(JSON.parse(d).profile?.email || '');
 ")
 
-SITE_CONFIG=$(curl -s --connect-timeout 15 --max-time 120 -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json")
+SITE_CONFIG=$(curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json")
 
 ROLES_ON_SITE=$(echo "$SITE_CONFIG" | USER_EMAIL="$USER_EMAIL" node -e "
   const d = require('fs').readFileSync(0,'utf8');

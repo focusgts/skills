@@ -24,7 +24,7 @@ Manage sitemap configuration (`sitemap.yaml`) that defines sitemap generation ru
 ### Read Sitemap Configuration
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/content/sitemap.yaml"
 ```
@@ -42,7 +42,7 @@ sitemaps:
 ### Update Sitemap Configuration
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: text/yaml" \
   --data-binary @sitemap.yaml \
@@ -56,7 +56,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 Use PUT to create a new sitemap config. Returns 201 on success; returns 409 if a config already exists (use POST to update instead).
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X PUT \
+curl -s -X PUT \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: text/yaml" \
   --data-binary @sitemap.yaml \
@@ -74,7 +74,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/content/sitemap.yaml"
 ```

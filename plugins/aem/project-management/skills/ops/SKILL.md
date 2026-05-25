@@ -73,8 +73,6 @@ Shell commands in this skill use POSIX-compatible syntax (works on macOS/Linux).
 - **Git Bash / WSL**: Commands work as-is
 - **PowerShell**: Claude Code will translate commands automatically using available shell
 
-**curl:** All examples use `--connect-timeout 15` and `--max-time 120` so a stuck network does not hang the session. For unusually large responses (e.g. huge logs), you may increase `--max-time` for that call.
-
 The agent executing these commands should adapt syntax to the user's environment.
 
 ---
@@ -153,7 +151,7 @@ echo "Config: org=$ORG site=$SITE ref=$REF auth=${IMS_TOKEN:+set}"
 **Fetch profile** to verify auth and record user identity:
 
 ```bash
-PROFILE_RESPONSE=$(curl -s --connect-timeout 15 --max-time 120 -w "\n%{http_code}" \
+PROFILE_RESPONSE=$(curl -s -w "\n%{http_code}" \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/profile")
 HTTP_CODE=$(echo "$PROFILE_RESPONSE" | tail -n1)
@@ -195,7 +193,7 @@ echo "Authenticated as: $USER_EMAIL ($USER_NAME)"
 
 ```bash
 # Determine user role on the current site
-ACCESS_RESPONSE=$(curl -s --connect-timeout 15 --max-time 120 \
+ACCESS_RESPONSE=$(curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json")
 # Check which role(s) the user's email appears in within access.admin.role

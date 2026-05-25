@@ -21,7 +21,7 @@ Purge CDN cache for Edge Delivery Services content.
 ### Purge Cache (Single Path)
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/cache/${ORG}/${SITE}/${REF}${PATH}"
 ```
@@ -40,7 +40,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/cache/${ORG}/${SITE}/${REF}/*"
 ```

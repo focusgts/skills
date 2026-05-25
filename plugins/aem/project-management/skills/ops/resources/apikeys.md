@@ -28,33 +28,73 @@ Manage API keys for programmatic access to Edge Delivery Services.
 | read site API key | `/config/{org}/sites/{site}/apiKeys/{keyId}.json` | GET |
 | revoke site API key | `/config/{org}/sites/{site}/apiKeys/{keyId}.json` | DELETE |
 
+## Critical: POST creates a credential
+
+Any POST to an `apiKeys.json` endpoint creates a new API key, **even with an empty body** (`{}`) — the server fills in defaults (`author` role, `{org}/*` subject, ~1 year expiry). The created key's secret `value` is returned **once** and cannot be retrieved later.
+
+Never POST to these endpoints to "probe" the API. Only POST when the user has explicitly asked to create a key, with the intended role/expiration provided.
+
 ## Operations
 
 ### List Organization API Keys
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/apiKeys.json"
 ```
 
-**Response format:** Present as table — Name | ID | Scopes | Created
+**Response shape:** Object keyed by URL-safe key ID. Empty state returns `{}`.
+```json
+{
+  "{url-safe-key-id}": {
+    "id": "{raw-key-id}",
+    "roles": ["author"],
+    "subject": "{org}/*",
+    "expiration": "{iso-timestamp}",
+    "created": "{iso-timestamp}"
+  }
+}
+```
+
+**Note:** The outer key uses URL-safe base64 (`+` → `-`), but the inner `id` field uses raw base64 (`+`). Use the outer (URL-safe) form when constructing DELETE URLs.
+
+**Present as table:** ID | Roles | Subject | Expiration | Created
 
 ### Create Organization API Key
+
+**CAUTION — CONFIRMATION REQUIRED**
+
+Before executing, you MUST:
+1. Confirm the user explicitly asked to create a key (not "list" or "check")
+2. Tell user: "This will create a new API key with role(s) {roles} for {subject}. The secret value is shown once and cannot be retrieved later."
+3. Ask: "Do you want to proceed? (yes/no)"
+4. Only execute if user confirms with "yes"
+
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{"name": "CI/CD Key", "scopes": ["preview", "live"]}' \
+  -d '{"roles": ["author"], "subject": "${ORG}/*", "expiration": "2027-12-31T00:00:00.000Z"}' \
   "https://admin.hlx.page/config/${ORG}/apiKeys.json"
 ```
 
-**Success:** `Created org API key: {name} (ID: {keyId})`
+**Response shape on success:** HTTP 200 with the new key. The `value` field is the JWT — show it to the user **once** and never persist it.
+```json
+{
+  "id": "{raw-key-id}",
+  "roles": ["author"],
+  "subject": "{org}/*",
+  "expiration": "{iso-timestamp}",
+  "created": "{iso-timestamp}",
+  "value": "{jwt-token}"
+}
+```
 
-**Important:** The API key value is only returned once at creation. Store it securely.
+**Important:** The `value` (JWT) is only returned in this response. There is no GET that returns it. Store securely or it must be revoked and recreated.
 
 ### Read Organization API Key
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/apiKeys/${KEY_ID}.json"
 ```
@@ -68,7 +108,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/apiKeys/${KEY_ID}.json"
 ```
@@ -77,27 +117,34 @@ curl -s --connect-timeout 15 --max-time 120 -X DELETE \
 
 ### List Site API Keys
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/apiKeys.json"
 ```
 
-**Response format:** Present as table — Name | ID | Scopes | Created
+**Response shape:** Same as org listing — object keyed by URL-safe key ID; empty state returns `{}`.
+
+**Present as table:** ID | Roles | Subject | Expiration | Created
 
 ### Create Site API Key
+
+**CAUTION — CONFIRMATION REQUIRED**
+
+Same gate as Create Organization API Key. Confirm explicit user intent and warn that the secret value is shown only once.
+
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{"name": "Site Deploy Key", "scopes": ["preview", "live", "code"]}' \
+  -d '{"roles": ["author"], "subject": "${ORG}/${SITE}/*", "expiration": "2027-12-31T00:00:00.000Z"}' \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/apiKeys.json"
 ```
 
-**Success:** `Created site API key: {name} (ID: {keyId})`
+**Response shape:** Same as org create — `{id, roles, subject, expiration, created, value}`. The `value` is the one-time JWT.
 
 ### Read Site API Key
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/apiKeys/${KEY_ID}.json"
 ```
@@ -111,7 +158,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/apiKeys/${KEY_ID}.json"
 ```

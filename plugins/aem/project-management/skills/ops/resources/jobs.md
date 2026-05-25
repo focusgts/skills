@@ -36,17 +36,17 @@ Track and manage bulk operation jobs for Edge Delivery Services.
 
 ```bash
 # List preview jobs
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/preview"
 
 # List publish jobs
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/publish"
 
 # List index jobs
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/index"
 ```
@@ -57,7 +57,7 @@ curl -s --connect-timeout 15 --max-time 120 \
 
 If topic is known:
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/${TOPIC}/${JOB_NAME}"
 ```
@@ -65,19 +65,19 @@ curl -s --connect-timeout 15 --max-time 120 \
 If topic is unknown, probe all topics:
 ```bash
 for TOPIC in preview publish index preview-remove live-remove index-remove; do
-  HTTP=$(curl -s --connect-timeout 15 --max-time 120 -w "%{http_code}" -o /tmp/job.json \
+  HTTP=$(curl -s -w "%{http_code}" -o /tmp/job.json \
     -H "Authorization: Bearer ${IMS_TOKEN}" \
     "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/${TOPIC}/${JOB_NAME}")
   ([ "$HTTP" = "200" ] || [ "$HTTP" = "202" ]) && cat /tmp/job.json && break
 done
 ```
 
-Returns job progress: total, completed, failed, pending.
+Returns job state and progress. Top-level fields: `topic`, `name`, `state` (`created` | `running` | `stopped`), `createTime`, `startTime`, `stopTime`. Progress counts are nested under `progress`: `{ total, processed, failed, notmodified, success }`.
 
 ### Get Job Details
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/${TOPIC}/${JOB_NAME}/details"
 ```
@@ -96,7 +96,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/${TOPIC}/${JOB_NAME}"
 ```
@@ -126,7 +126,7 @@ If user confirms, poll status (max 60 attempts, ~10 minutes):
 MAX_ATTEMPTS=60
 ATTEMPT=0
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-  RESPONSE=$(curl -s --connect-timeout 15 --max-time 120 -w "\n%{http_code}" \
+  RESPONSE=$(curl -s -w "\n%{http_code}" \
     -H "Authorization: Bearer ${IMS_TOKEN}" \
     "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/${TOPIC}/${JOB_NAME}")
   HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
@@ -141,9 +141,10 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     const d = require('fs').readFileSync(0,'utf8');
     try {
       const j = JSON.parse(d);
-      console.log('PROCESSED=' + (j.processed || 0));
-      console.log('TOTAL=' + (j.total || 0));
-      console.log('FAILED=' + (j.failed || 0));
+      const p = j.progress || {};
+      console.log('PROCESSED=' + (p.processed || 0));
+      console.log('TOTAL=' + (p.total || 0));
+      console.log('FAILED=' + (p.failed || 0));
       console.log('STATE=' + JSON.stringify(j.state || ''));
     } catch(e) {
       console.log('PROCESSED=0'); console.log('TOTAL=0');

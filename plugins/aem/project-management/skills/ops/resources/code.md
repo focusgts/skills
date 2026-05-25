@@ -26,7 +26,7 @@ Deploy code changes from GitHub to Edge Delivery Services.
 Use the `/*` wildcard to recursively sync the entire repository tree:
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/code/${CODE_OWNER}/${CODE_REPO}/${REF}/*"
 ```
@@ -36,7 +36,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 ### Sync Specific File
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/code/${CODE_OWNER}/${CODE_REPO}/${REF}${PATH}"
 ```
@@ -45,7 +45,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 
 Example: Sync just the hero block:
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/code/${CODE_OWNER}/${CODE_REPO}/main/blocks/hero/hero.js"
 ```
@@ -53,7 +53,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 ### Code Status
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/code/${CODE_OWNER}/${CODE_REPO}/${REF}${PATH}"
 ```
@@ -68,7 +68,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/code/${CODE_OWNER}/${CODE_REPO}/${REF}${PATH}"
 ```
@@ -90,7 +90,7 @@ ORG=$(cat .claude-plugin/project-config.json | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   console.log(JSON.parse(d).org || '');
 ")
-SITES_JSON=$(curl -s --connect-timeout 15 --max-time 120 -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites.json")
+SITES_JSON=$(curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites.json")
 SITE_COUNT=$(echo "$SITES_JSON" | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   try { console.log((JSON.parse(d).sites || []).length); } catch(e) { console.log(0); }

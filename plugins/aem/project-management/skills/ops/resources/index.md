@@ -22,7 +22,7 @@ Manage search index for Edge Delivery Services content.
 ### Re-index (Single)
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/index/${ORG}/${SITE}/${REF}${PATH}"
 ```
@@ -34,7 +34,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 **Limit: 1000 paths max per request.** For larger sets, batch into multiple calls.
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"paths": ["/path1", "/path2"]}' \
@@ -46,7 +46,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 ### Index Status
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/index/${ORG}/${SITE}/${REF}${PATH}"
 ```
@@ -61,7 +61,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/index/${ORG}/${SITE}/${REF}${PATH}"
 ```

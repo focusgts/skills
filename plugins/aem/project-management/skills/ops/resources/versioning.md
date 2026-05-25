@@ -39,7 +39,7 @@ Manage configuration version history and rollback for org, site, and profile con
 ### List Versions (Org)
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/versions.json"
 ```
@@ -49,7 +49,7 @@ curl -s --connect-timeout 15 --max-time 120 \
 ### List Versions (Site)
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/versions.json"
 ```
@@ -57,7 +57,7 @@ curl -s --connect-timeout 15 --max-time 120 \
 ### List Versions (Profile)
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/profiles/${PROFILE}/versions.json"
 ```
@@ -66,17 +66,17 @@ curl -s --connect-timeout 15 --max-time 120 \
 
 ```bash
 # Org config version
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/versions/${VERSION_ID}.json"
 
 # Site config version
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/versions/${VERSION_ID}.json"
 
 # Profile config version
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/profiles/${PROFILE}/versions/${VERSION_ID}.json"
 ```
@@ -91,17 +91,17 @@ Before executing, you MUST:
 
 ```bash
 # Org config version
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/versions/${VERSION_ID}.json"
 
 # Site config version
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/versions/${VERSION_ID}.json"
 
 # Profile config version
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/profiles/${PROFILE}/versions/${VERSION_ID}.json"
 ```
@@ -118,17 +118,17 @@ Before executing, you MUST:
 
 ```bash
 # Org config
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}.json?restoreVersion=${VERSION_ID}"
 
 # Site config
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json?restoreVersion=${VERSION_ID}"
 
 # Profile config
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/profiles/${PROFILE}.json?restoreVersion=${VERSION_ID}"
 ```

@@ -32,7 +32,7 @@ Manage secrets for Edge Delivery Services at organization and site levels.
 
 ### List Organization Secrets
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/secrets.json"
 ```
@@ -44,7 +44,7 @@ curl -s --connect-timeout 15 --max-time 120 \
 The API accepts either a `hashedSecretConfig` (server-generates the value) or `keySecretConfig` (provide your own key). Both use `description` as the label — the `value` is only returned once in the response.
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"description": "My API secret"}' \
@@ -55,7 +55,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 
 ### Read Organization Secret
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/secrets/${SECRET_ID}.json"
 ```
@@ -69,7 +69,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/secrets/${SECRET_ID}.json"
 ```
@@ -78,7 +78,7 @@ curl -s --connect-timeout 15 --max-time 120 -X DELETE \
 
 ### List Site Secrets
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/secrets.json"
 ```
@@ -88,7 +88,7 @@ curl -s --connect-timeout 15 --max-time 120 \
 ### Create Site Secret
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X POST \
+curl -s -X POST \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"description": "My site secret"}' \
@@ -99,7 +99,7 @@ curl -s --connect-timeout 15 --max-time 120 -X POST \
 
 ### Read Site Secret
 ```bash
-curl -s --connect-timeout 15 --max-time 120 \
+curl -s \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/secrets/${SECRET_ID}.json"
 ```
@@ -113,7 +113,7 @@ Before executing, you MUST:
 3. Only execute if user confirms with "yes"
 
 ```bash
-curl -s --connect-timeout 15 --max-time 120 -X DELETE \
+curl -s -X DELETE \
   -H "Authorization: Bearer ${IMS_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/secrets/${SECRET_ID}.json"
 ```
