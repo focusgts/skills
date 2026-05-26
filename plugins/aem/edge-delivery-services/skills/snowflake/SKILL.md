@@ -1,0 +1,320 @@
+---
+name: snowflake
+description: Static-to-EDS overlay conversion that preserves the original DOM byte-for-byte while making text and image content authorable in Document Authoring. Use when converting an AI-generated static HTML page (Stardust, Mobirise, Relume, Lovable, v0, Figma-derived hand-coded, etc.) into an Edge Delivery Services page WITHOUT rewriting it into canonical block markup. Triggers on "convert this page to EDS overlay", "static-to-EDS overlay", "next experimentation", "next run", "start run #N", or when a user provides a source URL and asks to make it editable in DA while keeping the original design intact. Do NOT use for canonical EDS block-rewrite migrations — that's the page-import skill.
+license: Apache-2.0
+metadata:
+  version: "1.0.0"
+---
+
+# Snowflake — Static-to-EDS Overlay Conversion
+
+Convert a static HTML page into an EDS page using the **overlay
+pattern**: the original DOM is preserved exactly, and only the text
+and image content becomes authorable in Document Authoring. Header
+and footer remain static repository fragments. The page CSS and any
+animation JavaScript ship per-template under the EDS code bus.
+
+## When to use this skill
+
+The user has an AI-generated polished static HTML page and wants to
+launch it on Edge Delivery Services without losing the original
+design while still making content editable in DA.
+
+Typical user phrasing:
+- "Convert https://example.com/static-page to EDS"
+- "Make this page editable in DA but keep the original markup"
+- "Start the next experimentation for URL …"
+- "Static-to-EDS overlay for …"
+
+## What this skill does NOT do
+
+- Does **not** rewrite the page into EDS-shape markup (blocks with
+  `<div class="blockname">`). That's a different workflow
+  (`migrate-page`). The overlay pattern is for keeping the original
+  generator's DOM intact.
+- Does **not** modify the EDS substrate code in the target repo
+  (`scripts/scripts.js` overlay engine, lifecycle CSS, etc.) unless
+  the conversion surfaces a substrate gap. Substrate evolution is a
+  separate change with its own PR review.
+
+The skill **does** support three asset strategies (see
+`methodology.md` §3): `absolute` (rewrite to source-host URLs),
+`vendor` (copy into `./assets/`), and `da-media` (upload to
+`/media/<scope>/` via the bundled `da-media-upload.mjs` script).
+
+## Skill dependencies
+
+Snowflake cites DA HTML rules and the DA admin API contract from the
+`da-content` skill. **Load `da-content` alongside Snowflake.**
+Phases 3 (Generate) and 5 (Round-trip) reference it directly;
+methodology and learnings link into specific sections by name.
+
+## Prerequisites
+
+Before invoking, confirm with the user:
+
+1. **Source URL** — the static page to convert. Must be reachable
+   from this machine (publicly hosted or local dev server).
+2. **Target EDS repo** — owner/repo on GitHub. Must already have the
+   overlay engine wired (see `knowledge/architecture.md` §"Solution
+   shape"). For first-time setup, the substrate has to be in place;
+   the skill assumes it.
+3. **DA root path** — where in the DA tree the converted doc lands
+   (e.g., `/<some-root>/<page-slug>`).
+4. **DA admin token** — Snowflake consumes `$DA_TOKEN` from the
+   environment, or reads `~/.aem/da-token.json` (same cache that the
+   **da-auth** skill writes). If neither is set, fail early and
+   invoke the **da-auth** skill to obtain one.
+
+## How to invoke (host adapters)
+
+**Slicc**: the cone receives a sprinkle event or chat trigger,
+verifies prerequisites, then executes the phases sequentially as
+described below. See `HOST-NOTES.md` for sprinkle wiring.
+
+**Claude Code**: user types `/snowflake` or the agent
+auto-invokes on description match. Either way, the agent walks
+the phases sequentially.
+
+**Generic shell / other hosts**: the assistant works through the
+phases the same way — each phase is a discrete chunk of bash + Node
+invocations described in the corresponding `phases/<N>-<phase>.md`
+file.
+
+Across hosts, the skill body and phase prompts never reference
+host-specific primitives. The skill is sequential — no parallel
+execution in this version.
+
+## Bundle assets
+
+The skill ships with:
+
+```
+SKILL.md                       ← this file (entry point)
+phases/
+  0-prereq.md                  ← substrate install / version check
+  1-capture.md                 ← phase 1 prompt
+  2-analyze.md                 ← phase 2 prompt
+  3-generate.md                ← phase 3 prompt
+  4-wire.md                    ← phase 4 prompt
+  5-roundtrip.md               ← phase 5 prompt
+  6-reflect.md                 ← phase 6 prompt
+knowledge/
+  methodology.md               ← canonical phase rules (read by every phase)
+  architecture.md              ← overlay engine design + slot writer reference
+  eds-da-mechanics.md          ← EDS pipeline reference (overlay-runtime lore); DA admin API and HTML rules live in the da-content skill
+  learnings.md                 ← cross-project findings (5 runs distilled)
+substrate/
+  VERSION                      ← bundled substrate semver
+  MANIFEST.json                ← what install-substrate.mjs writes where
+  scripts/scripts.js           ← overlay engine
+  scripts/delayed.js           ← per-template animations loader
+  styles/styles.css            ← lifecycle visibility
+  blocks/header/{header.js,header.css}
+  blocks/footer/{footer.js,footer.css}
+  head.html                    ← minimal head
+install-substrate.mjs          ← idempotent substrate installer (used by phase 0)
+scripts/
+  transform-da-to-eds.mjs      ← Node script: DA divs-with-class → drafts HTML
+  dom-equality.mjs             ← Node script: compare source vs rendered DOM
+  da-media-upload.mjs          ← Node script: PUT binaries to DA /media/<scope>/, emit content.da.live URL mapping (used by assetStrategy=da-media)
+examples/
+  README.md                    ← pointers to worked examples (closed iterations)
+HOST-NOTES.md                  ← per-host adapter notes (not loaded by agent)
+README.md                      ← human-readable docs (not loaded by agent)
+```
+
+### Resolving paths inside this bundle
+
+When a phase prompt references `<SKILL_DIR>/knowledge/methodology.md`
+or similar, the assistant resolves `<SKILL_DIR>` to the absolute path
+of the directory containing this `SKILL.md` file, then substitutes
+that absolute path into the bash invocation. Per host:
+
+- **Claude Code (plugin)**: the agent reads `SKILL.md` from the plugin
+  cache (e.g. `~/.claude/plugins/cache/.../skills/snowflake/`) and
+  substitutes that path. Bash CWD is the target EDS repo, not the
+  skill directory — never use bare `./scripts/foo.mjs`.
+- **`gh upskill` / `npx skills`**: skills are installed to
+  `.claude/skills/snowflake/` at the target repo root; `<SKILL_DIR>`
+  resolves there.
+- **Slicc**: `<SKILL_DIR>` = `/workspace/skills/snowflake/`.
+- **Generic**: assistant computes the directory of `SKILL.md` and
+  uses that absolute path.
+
+Node scripts inside `scripts/` self-locate via `import.meta.url` and
+work regardless of CWD once invoked with the correct absolute path.
+
+## The `.snowflake/` directory convention
+
+The skill writes all per-repo state, project artifacts, and project-
+specific knowledge under a hidden `.snowflake/` directory at the
+target repo's root:
+
+```
+.snowflake/
+├── config.json                ← repo-level config (substrate version,
+│                                DA root default, branch prefix, etc.)
+├── knowledge/                 ← OPTIONAL — project-specific overrides
+│   ├── methodology.md         ← layered on top of bundled methodology
+│   ├── learnings.md           ← repo-local findings (not yet promoted)
+│   └── architecture.md        ← repo-specific substrate notes
+├── projects/
+│   └── <NNN>-<slug>/          ← per-run folder
+│       ├── state.json
+│       ├── notes.md
+│       ├── learnings.md
+│       ├── input/
+│       ├── output/
+│       └── diff/
+└── .backup/<timestamp>/       ← originals from substrate install
+```
+
+**Knowledge resolution order** at any phase (most-specific first):
+1. `.snowflake/knowledge/<file>.md` (project-specific)
+2. `<SKILL_DIR>/knowledge/<file>.md` (bundled, canonical)
+
+This lets a repo carry findings that aren't yet generic enough to
+PR upstream. Whether those eventually get promoted to the skill is
+the user's call.
+
+**Config-driven paths.** A repo can override defaults via
+`.snowflake/config.json`:
+
+```json
+{
+  "projectsDir": ".snowflake/projects",
+  "daRoot": "/marketing",
+  "branchPrefix": "snowflake-",
+  "trunkBranch": "main",
+  "tagPrefix": "snowflake-"
+}
+```
+
+Phases fall back to the defaults shown above when the config or any
+field is absent. **Recommended:** keep `branchPrefix` ending in `-`
+(hyphen, not `/` slash). With a hyphen the branch name is identical
+to the aem.page hostname segment and admin.hlx.page URL segment —
+no translation needed. Slash-style prefixes work but require
+flattening `/` → `-` when constructing aem.page hostnames (AEM
+Code Sync does this automatically for hostnames but admin.hlx.page
+URLs need the literal branch).
+
+## The seven phases (sequential)
+
+Each phase is described in its own file under `phases/`. The
+assistant reads the phase prompt, executes its steps, writes any
+state transitions, and proceeds to the next phase.
+
+**Phase 0** (Prerequisites) runs once per repo. It installs the
+overlay substrate if `.snowflake/config.json` is absent or its
+`substrateVersion` is stale. On subsequent invocations the phase
+sees the config and skips silently.
+
+State for a single run lives in:
+```
+<projectsDir>/<NNN>-<slug>/state.json
+```
+relative to the target repo's root (found via
+`git rev-parse --show-toplevel`). `<projectsDir>` is
+`.snowflake/projects` by default or the override from
+`.snowflake/config.json`. The skill creates this on Capture and
+updates it at each phase boundary. Phases check state.json on start
+and skip work that's already done — reruns are safe.
+
+### Phase summaries (full instructions in `phases/`)
+
+0. **Prerequisites** — confirm (or install) the overlay substrate;
+   write `.snowflake/config.json` with the installed version. Runs
+   once per repo. See `phases/0-prereq.md`.
+
+1. **Capture** — fetch source HTML and referenced external assets;
+   set up the project folder under
+   `<projectsDir>/<NNN>-<slug>/`. See `phases/1-capture.md`.
+
+2. **Analyze** — structural map of the page; identify header/footer
+   boundaries, section list, slot opportunities, head-level links to
+   lift, asset rewriting strategy. Produce `notes.md` and
+   `decisions.json` in the project folder. See `phases/2-analyze.md`.
+
+3. **Generate** — produce the 5 deployable artifacts (template HTML,
+   header fragment, footer fragment, page CSS, page animations JS)
+   plus the DA-source body fragment. Outputs go to
+   `<projectsDir>/<NNN>-<slug>/output/`. See `phases/3-generate.md`.
+
+4. **Wire** — copy artifacts to the EDS-served paths (`templates/`,
+   `fragments/<tpl>/`, `styles/`, `scripts/`), build the local-test
+   drafts file, run lint. See `phases/4-wire.md`.
+
+5. **Round-trip** — local first (dev server + headless browser
+   verification), then production (branch + push + DA PUT + preview
+   API + verify on `<branch>--<repo>--<owner>.aem.page`). See
+   `phases/5-roundtrip.md`.
+
+6. **Reflect** — append run findings to project notes; promote
+   cross-project learnings to `knowledge/learnings.md` (a PR to the
+   skill repo, if the host supports raising one); update methodology
+   if any new rule emerged. **Do not close the iteration — that's a
+   user decision.** See `phases/6-reflect.md`.
+
+## Closing an iteration
+
+The skill **never closes a run on its own**. After phase 6, it
+returns control to the user and waits for an explicit close request.
+Closure means tagging `iter-NNN-close` on the run branch and fast-
+forwarding the integration trunk. Closure is described in
+`phases/6-reflect.md` but only runs when the user asks.
+
+## Host-portable constraints (for skill maintainers)
+
+Maintainers extending this skill should keep it host-agnostic. See
+`HOST-NOTES.md` for the full list. Key points:
+
+- Use only: `bash`, `node` (≥22), `git`, `curl`, `jq`, `npm`/`npx`,
+  `playwright-cli`, POSIX `sed`/`grep`/`awk`.
+- Banned: Slicc-specific (`sprinkle send`, `upskill`), Claude-Code-
+  specific (`mcp__*`, named subagents in Agent tool), any GUI / MCP
+  / daemon.
+- Browser interaction: **`playwright-cli` only**. No host-bundled
+  browser tools.
+- State files: project-relative paths (under `.snowflake/projects/`
+  by default, or `${PROJECTS_DIR}` from config), never `<SKILL_DIR>`
+  or `/workspace`.
+- Subagent fan-out: out of scope in this version. The skill is fully
+  sequential.
+- Idempotency: every phase checks state.json on start. Reruns are
+  safe.
+
+## Loading knowledge in each phase
+
+Whenever a phase prompt says "read `<SKILL_DIR>/knowledge/<file>.md`",
+the assistant follows this resolution order (most-specific first):
+
+1. **Project-specific override:** if
+   `.snowflake/knowledge/<file>.md` exists in the target repo, read
+   it. This is the project's layered context.
+2. **Bundled, canonical:** read
+   `<SKILL_DIR>/knowledge/<file>.md`. Always present in the bundle.
+
+When the two contain overlapping rules, **the project override
+wins** for that project. Treat the override as additions and
+corrections, not a replacement of the bundled file.
+
+Every phase prompt assumes this procedure; phases don't re-state it.
+
+## Reading order for first invocation
+
+1. This file (you're reading it).
+2. Confirm the `da-content` skill is available (see "Skill
+   dependencies" above). You don't need to read it linearly — phase
+   prompts cite specific sections — but it must be loadable.
+3. `knowledge/methodology.md` (canonical phase rules — every phase
+   needs this), with the override resolution above.
+4. `knowledge/architecture.md` (overlay engine and slot writer
+   semantics — Generate phase needs this most).
+5. `knowledge/learnings.md` (cross-project findings — Generate and
+   Round-trip should at least skim this; specific entries are
+   referenced by individual phase prompts).
+6. The phase prompt for the current phase.
+
+Then start at Phase 0.
