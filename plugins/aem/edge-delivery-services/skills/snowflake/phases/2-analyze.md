@@ -163,7 +163,7 @@ this directly. Suggested shape:
 
 ```json
 {
-  "levelParam": "auto",
+  "levelParam": "page",
   "conversionLevel": "block-level",
   "feasibility": {
     "recommendation": "block-level",

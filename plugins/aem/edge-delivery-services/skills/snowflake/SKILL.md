@@ -49,7 +49,7 @@ target. Three asset strategies are supported (see
 
 | Parameter | Values | Default | Description |
 |-----------|--------|---------|-------------|
-| `level` | `auto`, `check`, `block`, `page` | `auto` | Conversion level — see below |
+| `level` | `page`, `auto`, `check`, `block` | `page` | Conversion level — see below |
 
 ### `level` values
 
@@ -64,15 +64,16 @@ When `level` is not provided and the user's phrasing signals intent,
 infer it:
 - "convert to EDS blocks", "block-level" → `level=block`
 - "overlay", "preserve the DOM", "snowflake overlay" → `level=page`
-- Neutral phrasing → `level=auto`
+- Neutral phrasing → `level=page`
 
 ### Usage examples
 
 ```
-/snowflake https://example.com/promo              → auto; infer repo, daRoot, slug
+/snowflake https://example.com/promo              → page-level; infer repo, daRoot, slug
 /snowflake https://example.com/promo level=block  → block-level, infer the rest
-/snowflake level=check                            → feasibility scan (asks for URL)
-/snowflake                                        → fully interactive
+/snowflake https://example.com/promo level=auto   → feasibility analysis decides
+/snowflake level=check                            → feasibility scan only (asks for URL)
+/snowflake                                        → page-level, fully interactive
 ```
 
 The **Source URL** is the leading positional input and the only required
@@ -103,7 +104,7 @@ confirmation before any work begins:
    (default `/marketing`, stamped on first substrate install). Change
    in the summary if a different path is needed for this run.
 4. **Conversion level** — inferred from phrasing (see Parameters), else
-   `auto`. Shown in summary; override inline.
+   `page`. Shown in summary; override inline.
 5. **Slug / template name** — derived from the source URL (kebab-case,
    ≤30 chars). Shown in summary; override inline.
 
@@ -147,7 +148,7 @@ On every invocation the agent performs these steps **before** entering Phase 0:
    Source URL : https://example.com/promo   ← required (provided)
    Target repo: acme/my-site                ← detected from git
    DA root    : /marketing                  ← config default
-   Level      : auto                        ← inferred
+   Level      : page                        ← default
    Slug       : promo                       ← derived from URL
    Substrate  : clean install — 9 files     ← (or: already current ✓)
    DA token   : cached ✓                    ← (or: not found — needed at Phase 5)
@@ -176,7 +177,7 @@ DA_ROOT="/marketing"
 NNN=001                           # next run number
 PROJECT=".snowflake/projects/${NNN}-${PAGE_SLUG}"
 TEMPLATE_NAME="promo"
-LEVEL="auto"                      # auto | check | block | page
+LEVEL="page"                      # page | auto | check | block
 
 # Phase 0 — install (or verify) the overlay substrate (once per repo)
 node "<SKILL_DIR>/scripts/install-substrate.mjs"
