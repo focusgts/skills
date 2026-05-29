@@ -3,14 +3,30 @@
 Goal: get the source page and its referenced external assets into a
 project folder so the rest of the run is self-contained.
 
-## Inputs (from user or from state)
+## Inputs (from init summary or from state)
 
-- **Source URL** (string, e.g. `https://example.com/path/to/page`).
-- **Target EDS repo** (owner/repo). Used by later phases.
-- **DA root** (e.g. `/marketing` or `/snowflake/<NNN>`). Used by later phases.
+By the time Phase 1 runs, inputs are already confirmed via the init summary
+(see SKILL.md "Initialization"). Read them from state.json if already present;
+otherwise resolve now and confirm with the user before fetching.
 
-If any are missing, ask the user and write them into state.json
-(see below) before doing any fetches.
+- **Source URL** — from the init summary (the only required input).
+- **Target EDS repo** — from state.json, or detect:
+  ```bash
+  OWNER_REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null \
+    || git remote get-url origin \
+       | sed -E 's|.*github\.com[:/]||;s|\.git$||')
+  ```
+- **DA root** — from state.json, or read the config default:
+  ```bash
+  DA_ROOT=$(jq -r '.daRoot // "/marketing"' \
+    .snowflake/config.json 2>/dev/null || echo "/marketing")
+  ```
+  Show this value in the init summary so the user can correct it for runs
+  that land under a different DA path.
+- **Slug / template name** — derived (see "State file" below). Values shown
+  in the init summary; user may override there, not here.
+
+Write all confirmed values into state.json before doing any fetches.
 
 ## Project folder location
 
@@ -36,8 +52,10 @@ NNN=$(printf "%03d" $((10#${NNN:-0} + 1)))
 ```
 
 Derive a `slug` from the source URL (kebab-case, ≤30 chars, no
-spaces). For `https://example.com/products/promo` use `example-com-promo`
-or similar — ask the user if ambiguous.
+spaces). For `https://example.com/products/promo` use `promo`, or
+when the path is ambiguous use `example-com-promo`. Show the derived
+value in the init summary — the user may override it there without a
+separate question.
 
 Project folder: `${PROJECTS_DIR}/<NNN>-<slug>/`. Create:
 ```
@@ -64,9 +82,10 @@ Write `state.json` with this shape:
 }
 ```
 
-`templateName` defaults to `<slug>` but the user may want to override
-(e.g. `bizpro-hub` for `bizpro-hub-prototype` source). Ask if the
-slug isn't already a good template name.
+`templateName` defaults to `<slug>`. The user may override it (e.g.
+`bizpro-hub` for a `bizpro-hub-prototype` source URL) via the init
+summary — no separate question needed here. Use the value from state.json
+if already set.
 
 ## Fetch the source
 

@@ -31,59 +31,68 @@ is current.
 ## Install (or upgrade)
 
 If `.snowflake/config.json` is absent or its `substrateVersion`
-doesn't match the bundled VERSION:
+doesn't match the bundled VERSION, the dry-run run during initialization
+(see SKILL.md "Initialization") will have reported one of four outcomes.
+Act based on which case was found:
 
-1. **Surface to the user first.** This is a substrate change — it
-   modifies files the user wrote (or didn't, if they're starting from
-   vanilla boilerplate). Explicitly confirm before running. Show the
-   list of files that will change (from `assets/substrate/MANIFEST.json`
-   `replace` and `ignorePatches` arrays).
+### Case A — Clean install (vanilla boilerplate)
 
-2. **Dry-run before applying:**
+The init summary already showed the file list and the user confirmed.
+Run the installer now:
 
-   ```bash
-   node <SKILL_DIR>/scripts/install-substrate.mjs --dry-run
-   ```
+```bash
+node <SKILL_DIR>/scripts/install-substrate.mjs
+```
 
-   Read the output. The installer compares every bundled substrate
-   file byte-for-byte against the target repo. There are four
-   outcomes:
-   - **No-op** — all bundled files already exist byte-identical in
-     the repo at the bundled version. Substrate is current; phase 0
-     is done.
-   - **Fresh install (clean)** — none of the targeted files exist,
-     or all are empty. Vanilla EDS boilerplate. Installer proceeds.
-   - **Fresh install (custom code detected)** — marker absent but
-     one or more targeted files exist with non-empty custom content.
-     The user likely has their own work there (e.g. a hand-rolled
-     overlay engine that doesn't use `applyTemplateOverlay`). The
-     installer refuses without `--force` and lists the affected
-     files. With `--force`, the originals are backed up and replaced.
-   - **Drift** — substrate is partially present (marker found) but
-     one or more files differ from the bundled version. Installer
-     refuses without `--force` and lists the diverging files. Common
-     causes: a hand-customized substrate, an older version installed
-     before snowflake existed, an interrupted install.
+No additional confirmation needed — the init summary covered it.
 
-   For drift or custom-code cases: investigate the named files first.
-   If the divergence is intentional (the repo's substrate is ahead
-   of the bundled one, or the custom code is the user's own engine),
-   don't `--force`. If the divergence is unintended (you want the
-   bundled version), `--force` is safe; originals get backed up.
+### Case B — Custom code detected
 
-3. **Install:**
+The init summary flagged this. Surface the specific files and ask the
+user to investigate before proceeding:
 
-   ```bash
-   node <SKILL_DIR>/scripts/install-substrate.mjs
-   # …or with --force if the drift case above is intentional
-   ```
+> The installer found non-empty content in files it would overwrite.
+> This usually means you have a hand-rolled overlay engine. Check:
+> `<list from dry-run output>`
+>
+> Options:
+> 1. Let me know if it's safe to overwrite — I'll re-run with `--force`
+>    (originals go to `.snowflake/.backup/<timestamp>/`).
+> 2. Or leave these files as-is if your overlay engine already works.
 
-   Idempotent: re-running is safe. Files are backed up to
-   `.snowflake/.backup/<timestamp>/` before being replaced.
+Run with `--force` only after the user confirms:
 
-4. **Confirm `.snowflake/config.json` was written** with the bundled
-   version stamped in. This is how subsequent invocations know to
-   skip Phase 0.
+```bash
+node <SKILL_DIR>/scripts/install-substrate.mjs --force
+```
+
+### Case C — Drift (substrate present but diverged)
+
+Substrate marker is present but files differ from the bundled version.
+Surface the drifted files and the version mismatch:
+
+> The installed substrate differs from the bundled v`<VERSION>`.
+> Drifted files: `<list from dry-run output>`
+>
+> Options:
+> 1. If the divergence is intentional (your substrate is ahead of the
+>    bundled one, or you customized it), keep it as-is and skip Phase 0.
+> 2. If the divergence is unintended, I can overwrite with `--force`
+>    (originals backed up).
+
+Run with `--force` only after the user confirms:
+
+```bash
+node <SKILL_DIR>/scripts/install-substrate.mjs --force
+```
+
+### After install
+
+Confirm `.snowflake/config.json` was written with the bundled version
+stamped in. The installer also writes the default config keys
+(`projectsDir`, `daRoot`, `branchPrefix`, `trunkBranch`, `tagPrefix`)
+on a fresh install — user-edited values from an existing config are
+preserved.
 
 ## What gets installed
 
