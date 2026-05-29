@@ -8,16 +8,11 @@ metadata:
 
 # AEM CLI
 
-The Adobe AEM CLI (`@adobe/aem-cli`) is the local development tool for AEM Edge Delivery Services.
-It provides three commands:
+Local development tool for AEM Edge Delivery Services. Three commands: `aem up` (local dev
+server), `aem import` (import server + UI), `aem content` (da.live content sync).
 
-- **`aem up`** — a local dev server that proxies AEM pipeline output so you can preview changes
-  without deploying
-- **`aem import`** — a local import server with the Importer UI for migrating content into EDS
-- **`aem content`** — a git-style workflow for syncing content with da.live
-
-Binary names: `aem` (primary) and `hlx` (backwards-compatibility alias from the former
-`helix-cli` npm package, renamed to `@adobe/aem-cli` at v15.0.0).
+Binary: `aem` (primary), `hlx` (alias from the former `helix-cli` package, renamed to
+`@adobe/aem-cli` at v15.0.0).
 
 ---
 
@@ -56,10 +51,7 @@ ships `hlx` as an alias.
 
 ## 2. `aem up` — Local Dev Server
 
-`aem up` starts a local server (default port 3000) that proxies requests to the AEM pipeline
-so you can preview changes before deploying. Without extra flags, it opens a browser window.
-
-**Agent-standard invocation (background, no browser popup, logs forwarded):**
+**Agent-standard invocation:**
 
 ```bash
 aem up --no-open --forward-browser-logs
@@ -91,9 +83,8 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
 | `--site-token <token>` | Site token for CLI access to the website |
 | `--cookies` | Proxy all cookies (default: only `hlx-auth-token` is proxied) |
 
-**Why `--html-folder` matters:** Without it, `aem up` proxies all requests to the remote AEM
-pipeline. Local HTML files in a folder (e.g., `drafts/`) are not served unless you pass
-`--html-folder drafts`. Without this flag, requesting `/drafts/page` returns a 404. `[verified]`
+**`--html-folder`:** without it, local HTML files are never served — all requests proxy to the
+remote pipeline, returning 404 for local-only paths. `[verified]`
 
 ### Serving import HTML locally (preview-import pattern)
 
@@ -106,8 +97,7 @@ aem up --html-folder drafts --no-open --forward-browser-logs
 
 ## 3. `.env` Configuration
 
-All `aem up` options can be persisted in a `.env` file at the project root. The CLI loads it
-automatically — no dotenv package needed. `[verified]`
+All options can be persisted in `.env` at the project root; loaded automatically. `[verified]`
 
 ```dotenv
 # .env example
@@ -145,8 +135,6 @@ openssl req -new -newkey rsa:4096 -x509 -sha256 -days 365 -nodes \
 aem up --tls-cert server.crt --tls-key server.key
 ```
 
-Browsers will warn about self-signed certs; use `mkcert` for day-to-day work.
-
 ### Persisting TLS in .env
 
 ```dotenv
@@ -158,15 +146,8 @@ AEM_TLS_KEY=server.key
 
 ## 5. Corporate Proxy and Certificate Trust
 
-Behind an enterprise HTTPS-intercepting proxy, `aem up` fails with:
-`unable to get local issuer certificate`
-
-The proxy replaces the server's certificate with one signed by the corporate CA. Node.js
-doesn't trust it by default. Fix:
-
-**1. Export the corporate CA certificate** from your browser's certificate details or ask IT.
-
-**2. Point Node.js to it:**
+`aem up` fails with `unable to get local issuer certificate` behind HTTPS-intercepting proxies.
+Export the corporate CA cert from your browser or ask IT, then set:
 ```bash
 # macOS / Linux
 export NODE_EXTRA_CA_CERTS=/path/to/corporate-ca.crt
@@ -177,13 +158,9 @@ set NODE_EXTRA_CA_CERTS=./certs/corporate-ca.pem
 aem up
 ```
 
-**Persisting via .env:**
-```dotenv
-# .env — but note: NODE_EXTRA_CA_CERTS is a Node env var, not an AEM_ var
-# Set it in your shell profile or CI environment, not the .env file
-```
+`NODE_EXTRA_CA_CERTS` is a Node built-in — set it in the shell profile or CI, not `.env`.
 
-**Proxy env vars** (standard, honoured by Node's HTTP client):
+**Proxy env vars:**
 
 | Variable | Purpose |
 |---|---|
@@ -196,9 +173,8 @@ aem up
 
 ## 6. `aem import` — Import Server
 
-`aem import` starts a local import server (default port 3001) that serves the
-[helix-importer-ui](https://github.com/adobe/helix-importer-ui) and proxies the source site
-for content extraction.
+Local import server (default port 3001) serving the
+[helix-importer-ui](https://github.com/adobe/helix-importer-ui).
 
 ```bash
 aem import                   # opens Importer UI in browser at port 3001
@@ -228,9 +204,6 @@ starting and configuring the server.
 
 ## 7. `aem content` — da.live Content Sync
 
-`aem content` provides a git-style workflow for pulling content from da.live into a local
-`content/` folder, editing it, and pushing changes back.
-
 ```bash
 aem content clone [--path /]   # auth via browser popup; clones into ./content/
 aem content status             # show added / modified / deleted files
@@ -242,9 +215,7 @@ aem content push               # upload committed changes to da.live
 aem content push --force       # overwrite remote on conflict
 ```
 
-**Auth token** is cached at `.hlx/.da-token.json` (gitignored). The CLI triggers a browser-based
-OAuth flow on the first `clone` (or any command that needs auth). Token is reused on subsequent
-commands.
+Auth token cached at `.hlx/.da-token.json` (gitignored); browser OAuth on first use.
 
 Read the token directly to authenticate curl calls:
 ```bash
@@ -253,8 +224,7 @@ TOKEN=$(jq -r .access_token .hlx/.da-token.json)
 
 ### Known behaviour: binary files
 
-`aem content push` is HTML-only. It reports success but **silently no-ops on binary files**
-(images, PDFs, fonts). `[verified]` — verified empirically.
+`aem content push` **silently no-ops on binary files** (images, PDFs, fonts). `[verified]`
 
 Verify a binary upload landed:
 ```bash
@@ -273,12 +243,8 @@ curl -X POST \
 
 ### Known behaviour: pre-upload HTML normalization
 
-The CLI applies normalization before uploading HTML that **strips EDS-specific decorations** —
-notably `<span class="icon icon-X">` icon markers and similar markup that the EDS pipeline
-reads, not the author. `[verified]`
-
-For byte-faithful upload of already-shaped EDS HTML (produced by migration pipelines or
-`excat`), POST directly to the DA Source API rather than using `aem content push`:
+Pre-upload normalization **strips EDS icon decorations** (`<span class="icon icon-X">` etc.).
+`[verified]` For byte-faithful EDS HTML, POST directly to the DA Source API:
 ```bash
 curl -X POST \
   -H "Authorization: Bearer $TOKEN" \
@@ -287,9 +253,7 @@ curl -X POST \
   "https://admin.da.live/source/<org>/<repo>/path/to/page.html"
 ```
 
-Use the CLI for prose-heavy authored content where EDS decorations are absent. See
-**da-content** (`references/platform.md §7`) for the full DA Source API contract,
-IMS auth details, and rate limits.
+See **da-content** (`references/platform.md §7`) for the DA Source API contract and rate limits.
 
 ---
 
