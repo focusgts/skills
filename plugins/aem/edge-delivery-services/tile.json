@@ -26,6 +26,7 @@
     "slicc-handoff": { "path": "skills/slicc-handoff/SKILL.md" },
     "snowflake": { "path": "skills/snowflake/SKILL.md" },
     "testing-blocks": { "path": "skills/testing-blocks/SKILL.md" },
-    "ue-component-model": { "path": "skills/ue-component-model/SKILL.md" }
+    "ue-component-model": { "path": "skills/ue-component-model/SKILL.md" },
+    "aem-cli": { "path": "skills/aem-cli/SKILL.md" }
   }
 }
