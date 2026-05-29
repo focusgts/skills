@@ -34,9 +34,12 @@ that path.
   `sprinkle`, skill `snowflake`. The cone handles the lick directly
   (does not delegate to a scoop) and walks the phases.
 
-**Cone vs. scoop:** the skill is single-actor — no scoops are
-spawned in this version. Future versions that fan out at Generate
-should be cone-orchestrated (scoops cannot create scoops in Slicc).
+**Parallel block generation:** In block-level conversion, Phase 3
+(B.5) says blocks can be generated in parallel. In Slicc, the cone
+should orchestrate this by dispatching one scoop per block (scoops
+cannot create scoops — the cone must be the dispatcher). Each scoop
+writes one block's JS + CSS; the cone collects results and proceeds
+to B.6. Sequential fallback is fine if scoop dispatch is unavailable.
 
 **Browser:** Use `playwright-cli` (pre-installed in Slicc cones) to
 fulfil browser intents — open URLs, evaluate JS, take screenshots.
@@ -72,10 +75,12 @@ target repo when phases run. Slicc's typical pattern (`cd` into
 - Automatic: the description triggers it on phrases like
   "convert this page to EDS overlay", "start run #N", etc.
 
-**Subagent fan-out:** out of scope in v1. If a future version wants
-parallelism, Claude Code's Agent tool with `subagent_type` and
-`isolation: "worktree"` is the natural fit. For now, all phases run
-in the main agent's context.
+**Parallel block generation:** In block-level conversion, Phase 3
+(B.5) says blocks can be generated in parallel. In Claude Code, use
+the Agent tool to dispatch one subagent per block — each writes its
+block's JS + CSS independently. Worktree isolation (`isolation:
+"worktree"`) is not needed since blocks write to separate file paths
+with no overlap. The main agent collects results and proceeds to B.6.
 
 **Browser:** Use whatever browser tool is available in the environment.
 Good options, in preference order:

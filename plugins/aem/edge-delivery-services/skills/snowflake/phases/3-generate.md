@@ -403,6 +403,14 @@ with the header/footer CSS rules extracted from the source.
 
 ### B.5 — Create content blocks
 
+Each block is fully independent — its own JS, CSS, and content model
+with no shared state or cross-block dependencies. **Blocks can be
+generated in parallel.** If the host environment supports dispatching
+independent work units concurrently (subagents, worker threads, scoops,
+etc.), use that capability here — it is safe and significantly faster
+for pages with many sections. Sequential generation is equally correct
+if parallelism is not available.
+
 For each content section in `decisions.json.feasibility.sections[]`
 where `level === "block"`:
 
