@@ -119,7 +119,7 @@ See [references/command-reference.md](./references/command-reference.md) for the
 
 ### Trusted local certificate (recommended — avoids browser warnings)
 
-Install `mkcert` (https://github.com/FiloSottile/mkcert), then:
+Install `mkcert` (search "mkcert FiloSottile" or `brew install mkcert`), then:
 
 ```bash
 mkcert -install                                          # one-time CA install
@@ -173,8 +173,7 @@ aem up
 
 ## 6. `aem import` — Import Server
 
-Local import server (default port 3001) serving the
-[helix-importer-ui](https://github.com/adobe/helix-importer-ui).
+Local import server (default port 3001) serving the helix-importer-ui.
 
 ```bash
 aem import                   # opens Importer UI in browser at port 3001
