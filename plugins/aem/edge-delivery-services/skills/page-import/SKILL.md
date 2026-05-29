@@ -1,6 +1,6 @@
 ---
 name: page-import
-description: Import a single webpage from any URL to structured HTML content for authoring in AEM Edge Delivery Services. Scrapes the page, analyzes structure, maps to existing blocks, and generates HTML for immediate local preview. Also triggered by terms like "migrate", "migration", or "migrating".
+description: Import a single webpage from any URL into canonical EDS block format — structured HTML that authors edit in DA. Scrapes the page, analyzes structure, maps to existing blocks, and generates HTML for immediate local preview. Also triggered by terms like "migrate", "migration", or "migrating". Use this when the goal is canonical EDS authoring; use the snowflake skill instead when the user wants to preserve the original DOM byte-for-byte (static-to-EDS overlay).
 license: Apache-2.0
 metadata:
   version: "1.0.0"
@@ -25,6 +25,7 @@ Use this skill when:
 - Building new blocks from scratch (use **content-driven-development** skill)
 - Modifying existing block code (use **building-blocks** skill)
 - Designing content models (use **content-modeling** skill)
+- Preserving the original page DOM byte-for-byte (use **snowflake** skill — overlay pattern instead of canonical block rewrite)
 
 ## Scope
 

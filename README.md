@@ -84,13 +84,20 @@ Design-phase skills that run *before* implementation. Produces static HTML and J
 
 | Skill | Description |
 |-------|-------------|
-| `page-import` | Import webpages (orchestrator) |
+| `page-import` | Import webpages into canonical EDS block format (orchestrator) |
 | `scrape-webpage` | Scrape and analyze webpage content |
 | `identify-page-structure` | Analyze page sections |
 | `page-decomposition` | Analyze content sequences |
 | `authoring-analysis` | Determine authoring approach |
 | `generate-import-html` | Generate structured HTML |
 | `preview-import` | Preview imported content |
+| `snowflake` | Static-to-EDS overlay conversion — preserves original DOM byte-for-byte (alternative path to `page-import` for AI-generated/static pages) |
+
+##### Content & Platform Reference
+
+| Skill | Description |
+|-------|-------------|
+| `da-content` | Reference for DA + EDS content rules: block HTML format, metadata, media handling, DA Source API contract, and silent-failure rules |
 
 ##### Managing Projects
 
