@@ -43,7 +43,7 @@ Read and manage organization and site configurations.
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}.json"
 ```
 > **⚠️ IMPORTANT: POST replaces the ENTIRE configuration.** It is NOT a merge/patch operation. 
@@ -63,7 +63,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"property": "value"}' \
   "https://admin.hlx.page/config/${ORG}.json"
@@ -75,7 +75,7 @@ curl -s -X POST \
 
 ```bash
 curl -s -X PUT \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"property": "value"}' \
   "https://admin.hlx.page/config/${ORG}.json"
@@ -91,7 +91,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}.json"
 ```
 
@@ -99,7 +99,7 @@ curl -s -X DELETE \
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json"
 ```
 
@@ -122,7 +122,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"property": "value"}' \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json"
@@ -134,7 +134,7 @@ curl -s -X POST \
 
 ```bash
 curl -s -X PUT \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"property": "value"}' \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json"
@@ -150,7 +150,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json"
 ```
 
@@ -158,14 +158,14 @@ curl -s -X DELETE \
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/robots.txt"
 ```
 
 ### Update Robots.txt
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: text/plain" \
   -d 'User-agent: *
 Disallow: /private/

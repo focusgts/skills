@@ -10,12 +10,111 @@ Content management operations for Document Authoring repository (`admin.da.live`
 
 ## Prerequisites
 
-**IMS Token Required** - Uses the same IMS token as all other operations.
+**IMS Token Required** - DA content operations (`admin.da.live`) require a separate Adobe IMS token, different from the `admin.hlx.page` auth token used for other operations.
 
-If token is missing, invoke the auth skill first:
+Check for existing DA token:
+```bash
+IMS_TOKEN=$(node -e "
+  const fs = require('fs');
+  try {
+    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
+    if (t.imsToken && t.imsTokenExpiry > Math.floor(Date.now()/1000) + 60) {
+      process.stdout.write(t.imsToken);
+    }
+  } catch (e) {}
+")
+echo "da_auth=${IMS_TOKEN:+set}"
 ```
-Skill({ skill: "project-management:auth" })
+
+If `IMS_TOKEN` is empty, authenticate via Adobe IMS (this opens a separate login flow for DA):
+
+```bash
+mkdir -p "${HOME}/.aem"
+
+node -e "
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { chromium } = require('playwright');
+
+const CALLBACK_PORT = 9898;
+const TOKEN_PATH = path.join(process.env.HOME, '.aem', 'ims-token.json');
+
+const scopes = 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read';
+
+const authUrl = 'https://ims-na1.adobelogin.com/ims/authorize/v2' +
+  '?client_id=darkalley' +
+  '&scope=' + encodeURIComponent(scopes) +
+  '&response_type=token' +
+  '&redirect_uri=' + encodeURIComponent('http://localhost:' + CALLBACK_PORT + '/callback');
+
+let browser;
+
+const server = http.createServer((req, res) => {
+  const url = new URL(req.url, 'http://localhost:' + CALLBACK_PORT);
+  
+  if (url.pathname === '/callback') {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(\`<!DOCTYPE html><html><body>
+<script>
+  const p = new URLSearchParams(window.location.hash.substring(1));
+  const token = p.get('access_token');
+  const expiresIn = p.get('expires_in');
+  if (token) {
+    fetch('/token?access_token=' + encodeURIComponent(token) + '&expires_in=' + encodeURIComponent(expiresIn || ''));
+    document.body.innerHTML = '<h2>DA login successful!</h2>';
+  } else {
+    fetch('/token?error=failed');
+    document.body.innerHTML = '<h2>Login failed</h2>';
+  }
+</script>
+</body></html>\`);
+    return;
+  }
+  
+  if (url.pathname === '/token') {
+    const token = url.searchParams.get('access_token');
+    const expiresIn = url.searchParams.get('expires_in');
+    res.writeHead(200); res.end();
+    server.close();
+    
+    if (token) {
+      const expiresAt = Math.floor(Date.now() / 1000) + parseInt(expiresIn || '86400', 10);
+      // Merge with existing file to preserve authToken
+      let existing = {};
+      try { existing = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8')); } catch (e) {}
+      existing.imsToken = token;
+      existing.imsTokenExpiry = expiresAt;
+      fs.mkdirSync(path.dirname(TOKEN_PATH), { recursive: true });
+      fs.writeFileSync(TOKEN_PATH, JSON.stringify(existing, null, 2));
+      try { fs.chmodSync(TOKEN_PATH, 0o600); } catch (e) {}
+      console.log('DA authentication successful');
+      console.log('Token cached at: ' + TOKEN_PATH);
+      if (browser) browser.close().then(() => process.exit(0));
+    } else {
+      console.error('Login failed');
+      if (browser) browser.close().then(() => process.exit(1));
+    }
+  }
+});
+
+(async () => {
+  server.listen(CALLBACK_PORT, 'localhost');
+  console.log('Opening browser for DA login...');
+  browser = await chromium.launch({ headless: false });
+  const page = await browser.newPage();
+  await page.goto(authUrl);
+  
+  setTimeout(() => {
+    console.error('Login timed out');
+    server.close();
+    browser.close().then(() => process.exit(1));
+  }, 5 * 60 * 1000);
+})();
+"
 ```
+
+**Note:** DA operations require an Adobe account (Adobe ID). This is separate from the `admin.hlx.page` login which supports all identity providers.
 
 ---
 

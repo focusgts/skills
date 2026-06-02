@@ -40,7 +40,7 @@ Manage configuration version history and rollback for org, site, and profile con
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/versions.json"
 ```
 
@@ -50,7 +50,7 @@ curl -s \
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/versions.json"
 ```
 
@@ -58,7 +58,7 @@ curl -s \
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/profiles/${PROFILE}/versions.json"
 ```
 
@@ -67,17 +67,17 @@ curl -s \
 ```bash
 # Org config version
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/versions/${VERSION_ID}.json"
 
 # Site config version
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/versions/${VERSION_ID}.json"
 
 # Profile config version
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/profiles/${PROFILE}/versions/${VERSION_ID}.json"
 ```
 
@@ -92,17 +92,17 @@ Before executing, you MUST:
 ```bash
 # Org config version
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/versions/${VERSION_ID}.json"
 
 # Site config version
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/versions/${VERSION_ID}.json"
 
 # Profile config version
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/profiles/${PROFILE}/versions/${VERSION_ID}.json"
 ```
 
@@ -119,17 +119,17 @@ Before executing, you MUST:
 ```bash
 # Org config
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}.json?restoreVersion=${VERSION_ID}"
 
 # Site config
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json?restoreVersion=${VERSION_ID}"
 
 # Profile config
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/profiles/${PROFILE}.json?restoreVersion=${VERSION_ID}"
 ```
 

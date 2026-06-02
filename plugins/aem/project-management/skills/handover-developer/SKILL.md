@@ -1,5 +1,5 @@
 ---
-name: development
+name: handover-developer
 description: Generate comprehensive technical documentation for developers taking over an AEM Edge Delivery Services project. Analyzes codebase structure, custom implementations, design tokens, and produces a complete developer guide.
 license: Apache-2.0
 allowed-tools: Read, Write, Edit, Bash, Skill, Glob, Grep
@@ -233,17 +233,17 @@ Multiple sites = **repoless** setup. Single site = **standard** setup.
 First, check for valid auth token:
 
 ```bash
-IMS_TOKEN=$(node -e "
+AUTH_TOKEN=$(node -e "
   const fs = require('fs');
   try {
     const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    if (t.imsToken && t.imsTokenExpiry > Math.floor(Date.now()/1000) + 60) {
-      process.stdout.write(t.imsToken);
+    if (t.authToken && t.authTokenExpiry > Math.floor(Date.now()/1000) + 60) {
+      process.stdout.write(t.authToken);
     }
   } catch (e) {}
 ")
 
-if [ -z "$IMS_TOKEN" ]; then
+if [ -z "$AUTH_TOKEN" ]; then
   echo "AUTH_REQUIRED"
 fi
 ```
@@ -257,14 +257,14 @@ Skill({ skill: "project-management:auth" })
 Then fetch site config:
 
 ```bash
-IMS_TOKEN=$(node -e "
+AUTH_TOKEN=$(node -e "
   const fs = require('fs');
   try {
     const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    process.stdout.write(t.imsToken || '');
+    process.stdout.write(t.authToken || '');
   } catch (e) {}
 ")
-curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/{site-name}.json"
+curl -s -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/{site-name}.json"
 ```
 
 **Example response:**

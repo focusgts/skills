@@ -28,7 +28,7 @@ Never POST to this endpoint to "probe" the API. Only POST when the user has expl
 ### List Tokens
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/tokens.json"
 ```
 
@@ -48,7 +48,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{}' \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/tokens.json"
@@ -68,7 +68,7 @@ curl -s -X POST \
 ### Get Token
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/tokens/${TOKEN_ID}.json"
 ```
 
@@ -82,7 +82,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/tokens/${TOKEN_ID}.json"
 ```
 

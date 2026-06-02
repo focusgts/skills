@@ -22,7 +22,7 @@ The `{path}` is the destination path for the sitemap (e.g., `/sitemap.xml`). The
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/sitemap/${ORG}/${SITE}/${REF}${PATH}"
 ```
 
@@ -36,7 +36,7 @@ Generate sitemap at a specific location:
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/sitemap/${ORG}/${SITE}/${REF}/sitemaps/blog.xml"
 ```
 

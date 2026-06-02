@@ -23,7 +23,7 @@ Manage search index for Edge Delivery Services content.
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/index/${ORG}/${SITE}/${REF}${PATH}"
 ```
 
@@ -35,7 +35,7 @@ curl -s -X POST \
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"paths": ["/path1", "/path2"]}' \
   "https://admin.hlx.page/index/${ORG}/${SITE}/${REF}/*"
@@ -47,7 +47,7 @@ curl -s -X POST \
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/index/${ORG}/${SITE}/${REF}${PATH}"
 ```
 
@@ -62,7 +62,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/index/${ORG}/${SITE}/${REF}${PATH}"
 ```
 

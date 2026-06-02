@@ -39,7 +39,7 @@ Never POST to these endpoints to "probe" the API. Only POST when the user has ex
 ### List Organization API Keys
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/apiKeys.json"
 ```
 
@@ -72,7 +72,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"roles": ["author"], "subject": "${ORG}/*", "expiration": "2027-12-31T00:00:00.000Z"}' \
   "https://admin.hlx.page/config/${ORG}/apiKeys.json"
@@ -95,7 +95,7 @@ curl -s -X POST \
 ### Read Organization API Key
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/apiKeys/${KEY_ID}.json"
 ```
 
@@ -109,7 +109,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/apiKeys/${KEY_ID}.json"
 ```
 
@@ -118,7 +118,7 @@ curl -s -X DELETE \
 ### List Site API Keys
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/apiKeys.json"
 ```
 
@@ -134,7 +134,7 @@ Same gate as Create Organization API Key. Confirm explicit user intent and warn 
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"roles": ["author"], "subject": "${ORG}/${SITE}/*", "expiration": "2027-12-31T00:00:00.000Z"}' \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/apiKeys.json"
@@ -145,7 +145,7 @@ curl -s -X POST \
 ### Read Site API Key
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/apiKeys/${KEY_ID}.json"
 ```
 
@@ -159,7 +159,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/apiKeys/${KEY_ID}.json"
 ```
 

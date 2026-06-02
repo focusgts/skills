@@ -14,7 +14,7 @@ Purge CDN cache for Edge Delivery Services content.
 |--------|----------|--------|---------------|
 | clear cache (single path) | `/cache/{org}/{site}/{ref}/{path}` | POST | Optional (`cache:write` if authenticated) |
 
-> **Note:** The admin API documents only the single-path `POST /cache/{org}/{site}/{ref}/{path}` endpoint. Cache purge supports both authenticated (`Authorization: Bearer`) and unauthenticated requests. If your CDN uses a custom purge hook (`byo` CDN), it is triggered automatically when configured in the site settings. The `/*` wildcard path is not explicitly documented — use it cautiously as behavior may vary.
+> **Note:** The admin API documents only the single-path `POST /cache/{org}/{site}/{ref}/{path}` endpoint. Cache purge supports both authenticated and unauthenticated requests. If your CDN uses a custom purge hook (`byo` CDN), it is triggered automatically when configured in the site settings. The `/*` wildcard path is not explicitly documented — use it cautiously as behavior may vary.
 
 ## Operations
 
@@ -22,7 +22,7 @@ Purge CDN cache for Edge Delivery Services content.
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/cache/${ORG}/${SITE}/${REF}${PATH}"
 ```
 
@@ -41,7 +41,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/cache/${ORG}/${SITE}/${REF}/*"
 ```
 

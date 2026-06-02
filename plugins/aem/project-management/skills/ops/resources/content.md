@@ -46,7 +46,7 @@ Preview, publish, unpublish, and status operations for Edge Delivery Services co
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/preview/${ORG}/${SITE}/${REF}${PATH}"
 ```
 
@@ -60,7 +60,7 @@ curl -s -X POST \
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"paths": ["/path1", "/path2"]}' \
   "https://admin.hlx.page/preview/${ORG}/${SITE}/${REF}/*"
@@ -77,7 +77,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/preview/${ORG}/${SITE}/${REF}${PATH}"
 ```
 
@@ -88,7 +88,7 @@ curl -s -X DELETE \
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/live/${ORG}/${SITE}/${REF}${PATH}"
 ```
 
@@ -109,7 +109,7 @@ For wildcard (`/*`) operations, explain: "This creates an async job that may pro
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"paths": ["/path1", "/path2"]}' \
   "https://admin.hlx.page/live/${ORG}/${SITE}/${REF}/*"
@@ -128,7 +128,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/live/${ORG}/${SITE}/${REF}${PATH}"
 ```
 
@@ -150,7 +150,7 @@ Bulk unpublish uses the same bulk publish endpoint with `"delete": true`:
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"delete": true, "paths": ["/old-1", "/old-2", "/old-3"]}' \
   "https://admin.hlx.page/live/${ORG}/${SITE}/${REF}/*"
@@ -160,7 +160,7 @@ curl -s -X POST \
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/status/${ORG}/${SITE}/${REF}${PATH}"
 ```
 
@@ -169,7 +169,7 @@ curl -s \
 For explicit paths:
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"paths": ["/page-1", "/page-2"]}' \
   "https://admin.hlx.page/status/${ORG}/${SITE}/${REF}/*"
@@ -178,7 +178,7 @@ curl -s -X POST \
 For wildcard (all pages under a path) — returns async job:
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"paths": ["/blog/*"]}' \
   "https://admin.hlx.page/status/${ORG}/${SITE}/${REF}/*"
@@ -195,7 +195,7 @@ All operations support feature branches:
 ```bash
 # Preview on feature branch
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/preview/${ORG}/${SITE}/${BRANCH}${PATH}"
 ```
 
@@ -210,13 +210,13 @@ When user says "preview and publish /path", execute both in sequence:
 ```bash
 # Step 1: Preview
 HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/preview.json -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/preview/${ORG}/${SITE}/${REF}${PATH}")
 
 # Step 2: Publish only if preview succeeded (200/201)
 if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
   curl -s -X POST \
-    -H "Authorization: Bearer ${IMS_TOKEN}" \
+    -H "x-auth-token: ${AUTH_TOKEN}" \
     "https://admin.hlx.page/live/${ORG}/${SITE}/${REF}${PATH}"
   echo "Previewed and published: https://${REF}--${SITE}--${ORG}.aem.live${PATH}"
 else
@@ -236,7 +236,7 @@ PATHS='["/path1", "/path2", "/path3"]'
 
 # Step 1: Bulk preview - get job name from response
 PREVIEW_RESPONSE=$(curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d "{\"paths\": ${PATHS}}" \
   "https://admin.hlx.page/preview/${ORG}/${SITE}/${REF}/*")
@@ -253,7 +253,7 @@ ATTEMPT=0
 FAILED=0
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
   RESPONSE=$(curl -s -w "\n%{http_code}" \
-    -H "Authorization: Bearer ${IMS_TOKEN}" \
+    -H "x-auth-token: ${AUTH_TOKEN}" \
     "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/preview/${JOB_NAME}")
   HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
   STATUS=$(echo "$RESPONSE" | sed '$d')
@@ -285,7 +285,7 @@ fi
 # Step 3: Only publish if preview had no failures
 if [ "${FAILED:-0}" -eq 0 ]; then
   curl -s -X POST \
-    -H "Authorization: Bearer ${IMS_TOKEN}" \
+    -H "x-auth-token: ${AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
     -d "{\"paths\": ${PATHS}}" \
     "https://admin.hlx.page/live/${ORG}/${SITE}/${REF}/*"

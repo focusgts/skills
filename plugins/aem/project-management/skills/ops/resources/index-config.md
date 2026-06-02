@@ -25,7 +25,7 @@ Manage search index configuration (`query.yaml`) that defines indexing rules and
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/content/query.yaml"
 ```
 
@@ -47,7 +47,7 @@ indices:
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: text/yaml" \
   --data-binary @query.yaml \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/content/query.yaml"
@@ -61,7 +61,7 @@ Use PUT to create a new index config. Returns 201 on success; returns 409 if a c
 
 ```bash
 curl -s -X PUT \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: text/yaml" \
   --data-binary @query.yaml \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/content/query.yaml"
@@ -79,7 +79,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/content/query.yaml"
 ```
 

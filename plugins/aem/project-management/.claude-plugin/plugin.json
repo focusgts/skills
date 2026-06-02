@@ -8,9 +8,9 @@
   "license": "Apache-2.0",
   "skills": [
     "./skills/handover",
-    "./skills/authoring",
-    "./skills/development",
-    "./skills/admin",
+    "./skills/handover-author",
+    "./skills/handover-developer",
+    "./skills/handover-admin",
     "./skills/whitepaper",
     "./skills/auth",
     "./skills/ops"

@@ -24,7 +24,7 @@ Manage org-level profile configurations. Profiles are shared across sites and re
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/profiles.json"
 ```
 
@@ -34,7 +34,7 @@ curl -s \
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/profiles/${PROFILE}.json"
 ```
 
@@ -42,7 +42,7 @@ curl -s \
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"version": 1, "created": "...", "lastModified": "...", "content": {...}}' \
   "https://admin.hlx.page/config/${ORG}/profiles/${PROFILE}.json"
@@ -58,7 +58,7 @@ Use PUT to create a new profile config (fails with 409 if one already exists —
 
 ```bash
 curl -s -X PUT \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"version": 1, "created": "...", "lastModified": "...", "content": {...}}' \
   "https://admin.hlx.page/config/${ORG}/profiles/${PROFILE}.json"
@@ -76,7 +76,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/profiles/${PROFILE}.json"
 ```
 

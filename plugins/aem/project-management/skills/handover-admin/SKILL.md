@@ -1,5 +1,5 @@
 ---
-name: admin
+name: handover-admin
 description: Generate comprehensive admin documentation for AEM Edge Delivery Services project handover. Creates admin guide covering Config Service setup, permissions, access control, Admin API operations, cache management, and code sync. Use for "admin guide", "admin documentation", "admin handover".
 license: Apache-2.0
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, Skill
@@ -173,33 +173,25 @@ Replace `{ORG_NAME}` with the actual organization name provided by the user.
 
 ---
 
-## Phase 0.5: Authenticate with Adobe IMS
+## Phase 0.5: Authenticate with Edge Delivery Services
 
-**After getting the organization name, authenticate to obtain an IMS token.**
+**After getting the organization name, authenticate to obtain a token.**
 
 ### 0.5.1 Check for Existing Auth Token
 
 ```bash
-IMS_TOKEN=$(node -e "
+AUTH_TOKEN=$(node -e "
   const fs = require('fs');
   try {
     const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    if (t.imsToken && t.imsTokenExpiry > Math.floor(Date.now()/1000) + 60) {
-      process.stdout.write(t.imsToken);
+    if (t.authToken && t.authTokenExpiry > Math.floor(Date.now()/1000) + 60) {
+      process.stdout.write(t.authToken);
     }
   } catch (e) {}
 ")
-IMS_EXPIRY=$(node -e "
-  const fs = require('fs');
-  try {
-    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    process.stdout.write(String(t.imsTokenExpiry || 0));
-  } catch (e) { process.stdout.write('0'); }
-")
-NOW=$(date +%s)
 
-if [ -n "$IMS_TOKEN" ] && [ "$IMS_EXPIRY" -gt "$((NOW + 60))" ]; then
-  echo "Token valid (expires in $((IMS_EXPIRY - NOW)) seconds)"
+if [ -n "$AUTH_TOKEN" ]; then
+  echo "Token valid"
 else
   echo "Token missing or expired. Need to authenticate."
 fi
@@ -214,8 +206,8 @@ Skill({ skill: "project-management:auth" })
 ```
 
 This will:
-1. Open a browser for Adobe ID login
-2. Capture the IMS OAuth token automatically
+1. Open a browser for login
+2. Capture the OAuth token automatically
 3. Save token to `~/.aem/ims-token.json` (user-level, shared across projects)
 4. Auto-close the browser when complete
 
@@ -224,11 +216,11 @@ This will:
 After auth skill completes, verify token works:
 
 ```bash
-IMS_TOKEN=$(node -e "
+AUTH_TOKEN=$(node -e "
   const fs = require('fs');
   try {
     const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    process.stdout.write(t.imsToken || '');
+    process.stdout.write(t.authToken || '');
   } catch (e) {}
 ")
 ORG=$(cat .claude-plugin/project-config.json | node -e "
@@ -237,7 +229,7 @@ ORG=$(cat .claude-plugin/project-config.json | node -e "
 ")
 
 # Test with authenticated endpoint
-curl -s -w "%{http_code}" -o /dev/null -H "Authorization: Bearer ${IMS_TOKEN}" \
+curl -s -w "%{http_code}" -o /dev/null -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites.json"
 ```
 
@@ -287,14 +279,14 @@ Multiple sites = **repoless** setup. Single site = **standard** setup.
 **Then fetch individual site config for code and content details:**
 
 ```bash
-IMS_TOKEN=$(node -e "
+AUTH_TOKEN=$(node -e "
   const fs = require('fs');
   try {
     const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    process.stdout.write(t.imsToken || '');
+    process.stdout.write(t.authToken || '');
   } catch (e) {}
 ")
-curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/{site-name}.json"
+curl -s -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/{site-name}.json"
 ```
 
 **Example response:**
@@ -385,14 +377,14 @@ Complete administration guide for managing this Edge Delivery Services project.
 ### Login
 
 1. Open: https://admin.hlx.page/login/{org}/{site}
-2. Sign in with your Adobe ID
+2. Sign in with your credentials
 3. Copy auth token for API operations
 
 ### Logout
 
 ```bash
 curl -X POST \
-  -H "Authorization: Bearer $IMS_TOKEN" \
+  -H "x-auth-token: $AUTH_TOKEN" \
   "https://admin.hlx.page/logout/{org}/{site}/main"
 ```
 
@@ -401,7 +393,7 @@ curl -X POST \
 ### View Current Access
 
 ```bash
-curl -H "Authorization: Bearer $IMS_TOKEN" \
+curl -H "x-auth-token: $AUTH_TOKEN" \
   "https://admin.hlx.page/config/{org}/sites/{site}/access.json"
 ```
 
@@ -416,7 +408,7 @@ curl -H "Authorization: Bearer $IMS_TOKEN" \
 
 ```bash
 curl -X DELETE \
-  -H "Authorization: Bearer $IMS_TOKEN" \
+  -H "x-auth-token: $AUTH_TOKEN" \
   "https://admin.hlx.page/config/{org}/sites/{site}/access/admin/{email}.json"
 ```
 
@@ -450,7 +442,7 @@ curl -X DELETE \
 
 ```bash
 curl -X POST \
-  -H "Authorization: Bearer $IMS_TOKEN" \
+  -H "x-auth-token: $AUTH_TOKEN" \
   "https://admin.hlx.page/code/{owner}/{repo}/main"
 ```
 

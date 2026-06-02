@@ -37,17 +37,17 @@ Track and manage bulk operation jobs for Edge Delivery Services.
 ```bash
 # List preview jobs
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/preview"
 
 # List publish jobs
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/publish"
 
 # List index jobs
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/index"
 ```
 
@@ -58,7 +58,7 @@ curl -s \
 If topic is known:
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/${TOPIC}/${JOB_NAME}"
 ```
 
@@ -66,7 +66,7 @@ If topic is unknown, probe all topics:
 ```bash
 for TOPIC in preview publish index preview-remove live-remove index-remove; do
   HTTP=$(curl -s -w "%{http_code}" -o /tmp/job.json \
-    -H "Authorization: Bearer ${IMS_TOKEN}" \
+    -H "x-auth-token: ${AUTH_TOKEN}" \
     "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/${TOPIC}/${JOB_NAME}")
   ([ "$HTTP" = "200" ] || [ "$HTTP" = "202" ]) && cat /tmp/job.json && break
 done
@@ -78,7 +78,7 @@ Returns job state and progress. Top-level fields: `topic`, `name`, `state` (`cre
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/${TOPIC}/${JOB_NAME}/details"
 ```
 
@@ -97,7 +97,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/${TOPIC}/${JOB_NAME}"
 ```
 
@@ -127,7 +127,7 @@ MAX_ATTEMPTS=60
 ATTEMPT=0
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
   RESPONSE=$(curl -s -w "\n%{http_code}" \
-    -H "Authorization: Bearer ${IMS_TOKEN}" \
+    -H "x-auth-token: ${AUTH_TOKEN}" \
     "https://admin.hlx.page/job/${ORG}/${SITE}/${REF}/${TOPIC}/${JOB_NAME}")
   HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
   STATUS=$(echo "$RESPONSE" | sed '$d')

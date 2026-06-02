@@ -27,7 +27,7 @@ Use the `/*` wildcard to recursively sync the entire repository tree:
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/code/${CODE_OWNER}/${CODE_REPO}/${REF}/*"
 ```
 
@@ -37,7 +37,7 @@ curl -s -X POST \
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/code/${CODE_OWNER}/${CODE_REPO}/${REF}${PATH}"
 ```
 
@@ -46,7 +46,7 @@ curl -s -X POST \
 Example: Sync just the hero block:
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/code/${CODE_OWNER}/${CODE_REPO}/main/blocks/hero/hero.js"
 ```
 
@@ -54,7 +54,7 @@ curl -s -X POST \
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/code/${CODE_OWNER}/${CODE_REPO}/${REF}${PATH}"
 ```
 
@@ -69,7 +69,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/code/${CODE_OWNER}/${CODE_REPO}/${REF}${PATH}"
 ```
 
@@ -90,7 +90,7 @@ ORG=$(cat .claude-plugin/project-config.json | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   console.log(JSON.parse(d).org || '');
 ")
-SITES_JSON=$(curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites.json")
+SITES_JSON=$(curl -s -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites.json")
 SITE_COUNT=$(echo "$SITES_JSON" | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   try { console.log((JSON.parse(d).sites || []).length); } catch(e) { console.log(0); }

@@ -25,7 +25,7 @@ View and manage audit logs for Edge Delivery Services.
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}"
 ```
 
@@ -60,17 +60,17 @@ curl -s \
 ```bash
 # Last hour
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}?since=1h"
 
 # Last 24 hours
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}?since=24h"
 
 # Last 3 days
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}?since=3d"
 ```
 
@@ -78,7 +78,7 @@ curl -s \
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}?from=2024-01-01T00:00:00Z&to=2024-01-02T00:00:00Z"
 ```
 
@@ -86,7 +86,7 @@ curl -s \
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"entries": [{"event": "Manual deployment completed"}]}' \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}"
@@ -124,7 +124,7 @@ For large log sets, the response includes a `nextToken` and `links.next` URL. To
 ```bash
 NEXT_TOKEN="ABAB=="  # from previous response
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/log/${ORG}/${SITE}/${REF}?nextToken=${NEXT_TOKEN}"
 ```
 

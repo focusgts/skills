@@ -137,28 +137,28 @@ node -e "
 
 ### Step 1: Authenticate (REQUIRED)
 
-**Before ANY API call**, check if IMS token exists:
+**Before ANY API call**, check if auth token exists:
 
 ```bash
-IMS_TOKEN=$(node -e "
+AUTH_TOKEN=$(node -e "
   const fs = require('fs');
   try {
     const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    if (t.imsToken && t.imsTokenExpiry > Math.floor(Date.now()/1000) + 60) {
-      process.stdout.write(t.imsToken);
+    if (t.authToken && t.authTokenExpiry > Math.floor(Date.now()/1000) + 60) {
+      process.stdout.write(t.authToken);
     }
   } catch (e) {}
 ")
-echo "auth=${IMS_TOKEN:+set}"
+echo "auth=${AUTH_TOKEN:+set}"
 ```
 
-**If `IMS_TOKEN` is empty**, invoke the auth skill BEFORE proceeding:
+**If `AUTH_TOKEN` is empty**, invoke the auth skill BEFORE proceeding:
 
 ```
 Skill({ skill: "project-management:auth" })
 ```
 
-**IMPORTANT:** Do NOT skip this step. Do NOT attempt any API calls without a valid token. Use `Authorization: Bearer ${IMS_TOKEN}` header for all API calls.
+**IMPORTANT:** Do NOT skip this step. Do NOT attempt any API calls without a valid token. Use `-H "x-auth-token: ${AUTH_TOKEN}"` cookie for all `admin.hlx.page` API calls.
 
 ### Step 2: Load Full Configuration and Validate Role
 
@@ -176,28 +176,27 @@ eval $(node -e "
     console.log('ORG='); console.log('SITE='); console.log('REF=main');
   }
 ")
-IMS_TOKEN=$(node -e "
+AUTH_TOKEN=$(node -e "
   const fs = require('fs');
   try {
     const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    process.stdout.write(t.imsToken || '');
+    process.stdout.write(t.authToken || '');
   } catch (e) {}
 ")
-echo "Config: org=$ORG site=$SITE ref=$REF auth=${IMS_TOKEN:+set}"
+echo "Config: org=$ORG site=$SITE ref=$REF auth=${AUTH_TOKEN:+set}"
 ```
 
 **Fetch profile** to verify auth and record user identity:
 
 ```bash
 PROFILE_RESPONSE=$(curl -s -w "\n%{http_code}" \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/profile")
 HTTP_CODE=$(echo "$PROFILE_RESPONSE" | tail -n1)
 PROFILE=$(echo "$PROFILE_RESPONSE" | sed '$d')
 
 if [ "$HTTP_CODE" = "401" ]; then
-  echo "Auth token expired. Clearing cached token..."
-  rm -f "${HOME}/.aem/ims-token.json"
+  echo "Auth token expired. Need to re-authenticate..."
   echo "REAUTH_REQUIRED"
   exit 1
 elif [ "$HTTP_CODE" != "200" ]; then
@@ -223,7 +222,7 @@ echo "Authenticated as: $USER_EMAIL ($USER_NAME)"
 ```bash
 # Determine user role on the current site
 ACCESS_RESPONSE=$(curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json")
 # Check which role(s) the user's email appears in within access.admin.role
 # Roles: admin, author, publish, basic_author, basic_publish, develop, config, config_admin
@@ -577,7 +576,7 @@ Use this when user pastes a URL like `https://main--mysite--myorg.aem.page/en/pr
 This skill works with AEM Edge Delivery Services projects that are:
 
 1. **Onboarded to Admin Service** - Project must have admin.hlx.page access
-2. **User has Adobe IMS account** - Required for authentication
+2. **User has an account** - Required for authentication (supports federated login)
 3. **User has a site role that allows the operation** - Roles are defined in the site configuration (`access.admin.role`). The Admin API defines eight roles: `admin`, `author`, `publish`, `develop`, `basic_author`, `basic_publish`, `config`, and `config_admin`. Each operation needs the matching permission; if the user lacks it, the API returns **403**. Do not assume only "admin" or "author" — use the **403 guidance** and role table earlier in this file when explaining permission errors.
 4. **Network access** - Can reach admin.hlx.page (not blocked by firewall)
 

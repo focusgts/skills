@@ -28,7 +28,7 @@ Organization (org)
 
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites.json"
 ```
 
@@ -41,7 +41,7 @@ ORG=$(cat .claude-plugin/project-config.json | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   console.log(JSON.parse(d).org || '');
 ")
-SITES_JSON=$(curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites.json")
+SITES_JSON=$(curl -s -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites.json")
 SITE_COUNT=$(echo "$SITES_JSON" | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   try { console.log((JSON.parse(d).sites || []).length); } catch(e) { console.log(0); }
@@ -91,7 +91,7 @@ ORG=$(cat .claude-plugin/project-config.json | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   console.log(JSON.parse(d).org || '');
 ")
-SITES=$(curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites.json" | node -e "
+SITES=$(curl -s -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites.json" | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   try { (JSON.parse(d).sites || []).forEach(s => console.log(s.name)); } catch(e) {}
 ")
@@ -99,7 +99,7 @@ SITES=$(curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/
 for SITE in $SITES; do
   echo "Publishing /about on $SITE..."
   curl -s -X POST \
-    -H "Authorization: Bearer ${IMS_TOKEN}" \
+    -H "x-auth-token: ${AUTH_TOKEN}" \
     "https://admin.hlx.page/live/${ORG}/${SITE}/main/about"
 done
 ```

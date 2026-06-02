@@ -39,7 +39,7 @@ Never POST to these endpoints to "probe" the API. Only POST when the user has ex
 ### List Organization Secrets
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/secrets.json"
 ```
 
@@ -59,7 +59,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"description": "My API secret"}' \
   "https://admin.hlx.page/config/${ORG}/secrets.json"
@@ -70,7 +70,7 @@ curl -s -X POST \
 ### Read Organization Secret
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/secrets/${SECRET_ID}.json"
 ```
 
@@ -84,7 +84,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/secrets/${SECRET_ID}.json"
 ```
 
@@ -93,7 +93,7 @@ curl -s -X DELETE \
 ### List Site Secrets
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/secrets.json"
 ```
 
@@ -105,7 +105,7 @@ Same gate as Create Organization Secret. Confirm explicit user intent and warn t
 
 ```bash
 curl -s -X POST \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"description": "My site secret"}' \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/secrets.json"
@@ -116,7 +116,7 @@ curl -s -X POST \
 ### Read Site Secret
 ```bash
 curl -s \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/secrets/${SECRET_ID}.json"
 ```
 
@@ -130,7 +130,7 @@ Before executing, you MUST:
 
 ```bash
 curl -s -X DELETE \
-  -H "Authorization: Bearer ${IMS_TOKEN}" \
+  -H "x-auth-token: ${AUTH_TOKEN}" \
   "https://admin.hlx.page/config/${ORG}/sites/${SITE}/secrets/${SECRET_ID}.json"
 ```
 

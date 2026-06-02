@@ -41,7 +41,7 @@ Type `help` for the full command list.
 
 On first use, the skill will:
 1. Ask for your **organization name** (the `{org}` in `https://main--site--{org}.aem.page`)
-2. Open a browser for **Adobe ID login** to get an auth token
+2. Open a browser for **login** to get an auth token
 
 Configuration is saved to `~/.aem/ops-config.json` (org, site, ref) and `~/.aem/ims-token.json` (auth token, shared across all skills).
 

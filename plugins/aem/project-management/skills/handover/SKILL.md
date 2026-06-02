@@ -25,9 +25,9 @@ Generate comprehensive handover documentation for Edge Delivery Services project
 
 | Guide | Audience | Skill |
 |-------|----------|-------|
-| **Authoring Guide** | Content authors and content managers | `authoring` |
-| **Developer Guide** | Developers and technical team | `development` |
-| **Admin Guide** | Site administrators and operations | `admin` |
+| **Authoring Guide** | Content authors and content managers | `handover-author` |
+| **Developer Guide** | Developers and technical team | `handover-developer` |
+| **Admin Guide** | Site administrators and operations | `handover-admin` |
 
 ---
 
@@ -142,24 +142,24 @@ Replace `{ORG_NAME}` with the actual organization name provided by the user.
 
 **Why this matters:** The organization name is required by the Helix Admin API to determine if the project is repoless (multi-site). By gathering it once in the orchestrator, sub-skills running in parallel don't each need to prompt the user separately.
 
-### Step 1.6: Authenticate with Adobe IMS
+### Step 1.6: Authenticate with Edge Delivery Services
 
 **AFTER saving the organization name, authenticate to obtain an IMS token.**
 
 #### 1.6.1 Check for Existing Auth Token
 
 ```bash
-IMS_TOKEN=$(node -e "
+AUTH_TOKEN=$(node -e "
   const fs = require('fs');
   try {
     const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    if (t.imsToken && t.imsTokenExpiry > Math.floor(Date.now()/1000) + 60) {
-      process.stdout.write(t.imsToken);
+    if (t.authToken && t.authTokenExpiry > Math.floor(Date.now()/1000) + 60) {
+      process.stdout.write(t.authToken);
     }
   } catch (e) {}
 ")
 
-if [ -n "$IMS_TOKEN" ]; then
+if [ -n "$AUTH_TOKEN" ]; then
   echo "Token valid"
 else
   echo "Token missing or expired. Need to authenticate."
@@ -175,8 +175,8 @@ Skill({ skill: "project-management:auth" })
 ```
 
 This will:
-1. Open a browser for Adobe ID login
-2. Capture the IMS OAuth token automatically
+1. Open a browser for login
+2. Capture the OAuth token automatically
 3. Save token to `~/.aem/ims-token.json` (user-level, shared across projects)
 4. Auto-close the browser when complete
 
@@ -189,9 +189,9 @@ Based on user selection:
 | Selection | Action |
 |-----------|--------|
 | **All** | Invoke all three skills **in parallel** (see Step 3) |
-| **Authoring Guide** | `Skill({ skill: "project-management:authoring" })` |
-| **Developer Guide** | `Skill({ skill: "project-management:development" })` |
-| **Admin Guide** | `Skill({ skill: "project-management:admin" })` |
+| **Authoring Guide** | `Skill({ skill: "project-management:handover-author" })` |
+| **Developer Guide** | `Skill({ skill: "project-management:handover-developer" })` |
+| **Admin Guide** | `Skill({ skill: "project-management:handover-admin" })` |
 
 ### Step 3: For "All" Selection
 
@@ -216,17 +216,17 @@ In a SINGLE message, invoke three Agent tools in parallel. Foreground agents hav
 // All three in ONE message - runs in parallel with full permissions
 Agent({
   description: "Generate authoring guide",
-  prompt: "Invoke skill project-management:authoring to generate the authoring guide PDF. Show progress as you complete each phase."
+  prompt: "Invoke skill project-management:handover-author to generate the authoring guide PDF. Show progress as you complete each phase."
 })
 
 Agent({
   description: "Generate developer guide",
-  prompt: "Invoke skill project-management:development to generate the developer guide PDF. Show progress as you complete each phase."
+  prompt: "Invoke skill project-management:handover-developer to generate the developer guide PDF. Show progress as you complete each phase."
 })
 
 Agent({
   description: "Generate admin guide",
-  prompt: "Invoke skill project-management:admin to generate the admin guide PDF. Show progress as you complete each phase."
+  prompt: "Invoke skill project-management:handover-admin to generate the admin guide PDF. Show progress as you complete each phase."
 })
 ```
 
@@ -307,8 +307,8 @@ project-guides/ADMIN-GUIDE.md
 ## Related Skills
 
 This skill invokes:
-- `project-management:authoring` - Author/content manager guide (generates PDF immediately)
-- `project-management:development` - Developer technical guide (generates PDF immediately)
-- `project-management:admin` - Admin operations guide (generates PDF immediately)
+- `project-management:handover-author` - Author/content manager guide (generates PDF immediately)
+- `project-management:handover-developer` - Developer technical guide (generates PDF immediately)
+- `project-management:handover-admin` - Admin operations guide (generates PDF immediately)
 - `project-management:whitepaper` - PDF generation (invoked by each sub-skill after saving markdown)
 

@@ -27,12 +27,12 @@ eval $(node -e "
     console.log('CODE_OWNER='); console.log('CODE_REPO=');
   }
 ")
-IMS_TOKEN=$(node -e "
+AUTH_TOKEN=$(node -e "
   const fs = require('fs');
   try {
     const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    if (t.imsToken && t.imsTokenExpiry > Math.floor(Date.now()/1000) + 60) {
-      process.stdout.write(t.imsToken);
+    if (t.authToken && t.authTokenExpiry > Math.floor(Date.now()/1000) + 60) {
+      process.stdout.write(t.authToken);
     }
   } catch (e) {}
 ")
@@ -40,7 +40,7 @@ IMS_TOKEN=$(node -e "
 echo "org=$ORG"
 echo "site=$SITE"
 echo "ref=$REF"
-echo "auth=${IMS_TOKEN:+set}"
+echo "auth=${AUTH_TOKEN:+set}"
 echo "codeOwner=$CODE_OWNER"
 echo "codeRepo=$CODE_REPO"
 ```
@@ -67,7 +67,7 @@ node -e "
 
 ### Authentication
 
-If `IMS_TOKEN` is empty:
+If `AUTH_TOKEN` is empty:
 
 ```
 Skill({ skill: "project-management:auth" })
@@ -110,17 +110,17 @@ eval $(node -e "
     console.log('SITE=' + JSON.stringify(c.site || ''));
   } catch(e) { console.log('ORG='); console.log('SITE='); }
 ")
-IMS_TOKEN=$(node -e "
+AUTH_TOKEN=$(node -e "
   const fs = require('fs');
   try {
     const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    if (t.imsToken && t.imsTokenExpiry > Math.floor(Date.now()/1000) + 60) {
-      process.stdout.write(t.imsToken);
+    if (t.authToken && t.authTokenExpiry > Math.floor(Date.now()/1000) + 60) {
+      process.stdout.write(t.authToken);
     }
   } catch (e) {}
 ")
 
-SITE_CONFIG=$(curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json")
+SITE_CONFIG=$(curl -s -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json")
 eval $(echo "$SITE_CONFIG" | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   const c = JSON.parse(d);
@@ -139,13 +139,13 @@ Identity comes from `/profile`. Roles on the current site are read from `/config
 Use `node` to parse JSON so nested structures are handled correctly:
 
 ```bash
-PROFILE=$(curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/profile")
+PROFILE=$(curl -s -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/profile")
 USER_EMAIL=$(echo "$PROFILE" | node -e "
   const d = require('fs').readFileSync(0,'utf8');
   console.log(JSON.parse(d).profile?.email || '');
 ")
 
-SITE_CONFIG=$(curl -s -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json")
+SITE_CONFIG=$(curl -s -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites/${SITE}.json")
 
 ROLES_ON_SITE=$(echo "$SITE_CONFIG" | USER_EMAIL="$USER_EMAIL" node -e "
   const d = require('fs').readFileSync(0,'utf8');
