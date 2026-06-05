@@ -202,7 +202,7 @@ fi
 If no valid token exists, invoke the auth skill:
 
 ```
-Skill({ skill: "project-management:auth" })
+Skill({ skill: "aem-project-management:auth" })
 ```
 
 This will:
@@ -529,7 +529,7 @@ Check for and document:
 2. **IMMEDIATELY after saving the markdown**, invoke the PDF conversion skill:
 
    ```
-   Skill({ skill: "project-management:whitepaper", args: "project-guides/ADMIN-GUIDE.md project-guides/ADMIN-GUIDE.pdf" })
+   Skill({ skill: "aem-project-management:whitepaper", args: "project-guides/ADMIN-GUIDE.md project-guides/ADMIN-GUIDE.pdf" })
    ```
 
 3. Wait for PDF generation to complete (whitepaper skill auto-cleans source files)

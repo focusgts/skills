@@ -9,20 +9,17 @@ metadata:
 
 # AEM Edge Delivery Services Authentication
 
-Authenticate to obtain a Bearer token for all Edge Delivery Services admin operations. Works for all content sources (Document Authoring, SharePoint, Google Drive).
+Authenticate to obtain a token for all Edge Delivery Services admin operations. Supports all content sources: SharePoint (Microsoft), Google Drive (Google), Document Authoring (Adobe), and Crosswalk (Adobe).
 
 ## Token Usage
 
-The token works for all admin APIs:
+The `auth_token` cookie works for all admin APIs:
 
-| API | Usage |
-|-----|-------|
-| `admin.hlx.page` | Preview, publish, status, code sync, jobs, logs |
-| `admin.da.live` | DA content operations (list, source, copy, move) |
-| Config Service | Sites, config, secrets, API keys, profiles |
-
-**admin.hlx.page:** `-H "x-auth-token: ${AUTH_TOKEN}"`
-**admin.da.live:** `-H "Authorization: Bearer ${IMS_TOKEN}"`
+| API | Header | Usage |
+|-----|--------|-------|
+| `admin.hlx.page` | `x-auth-token: ${AUTH_TOKEN}` | Preview, publish, status, code sync, jobs, logs, config |
+| `admin.da.live` | `x-auth-token: ${AUTH_TOKEN}` | DA content operations (list, source, copy, move) |
+| Config Service | `x-auth-token: ${AUTH_TOKEN}` | Sites, config, secrets, API keys, profiles |
 
 ## When to Use This Skill
 
@@ -42,20 +39,19 @@ The token works for all admin APIs:
 
 ### Step 1: Check Existing Token
 
-Tokens are cached at the **user level** (`~/.aem/ims-token.json`), not per-project — one auth covers every project on this machine that uses Edge Delivery Services. Only `org` / `site` remain per-project at `.claude-plugin/project-config.json`.
+Tokens are stored at the **project level** in `.claude-plugin/project-config.json`.
 
 ```bash
-TOKEN_FILE="${HOME}/.aem/ims-token.json"
-mkdir -p "${HOME}/.aem"
+mkdir -p .claude-plugin
+grep -qxF '.claude-plugin/' .gitignore 2>/dev/null || echo '.claude-plugin/' >> .gitignore
 
-AUTH_TOKEN=$(node -e "
-  const fs = require('fs');
+AUTH_TOKEN=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
+  const d = require('fs').readFileSync(0,'utf8');
   try {
-    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    if (t.authToken && t.authTokenExpiry > Math.floor(Date.now()/1000) + 60) {
-      process.stdout.write(t.authToken);
-    }
-  } catch (e) {}
+    const c = JSON.parse(d);
+    const now = Math.floor(Date.now()/1000);
+    if (c.authToken && c.authTokenExpiry > now + 60) process.stdout.write(c.authToken);
+  } catch(e) {}
 ")
 
 if [ -n "$AUTH_TOKEN" ]; then
@@ -73,26 +69,23 @@ npx playwright --version 2>/dev/null || npm install -g playwright
 npx playwright install chromium 2>/dev/null || true
 ```
 
-### Step 2.5: Resolve Organization
+### Step 2.5: Resolve Organization and Auth Provider
 
-The login endpoint requires the org name. Check saved config:
+The login requires the org name and identity provider. Check saved config:
 
 ```bash
-ORG=$(node -e "
-  const fs = require('fs');
-  try {
-    const c = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ops-config.json', 'utf8'));
-    process.stdout.write(c.org || '');
-  } catch(e) {}
+ORG=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
+  const d = require('fs').readFileSync(0,'utf8');
+  try { process.stdout.write(JSON.parse(d).org || ''); } catch(e) {}
 ")
-# Fallback: check project-level config
-if [ -z "$ORG" ]; then
-  ORG=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
-    const d = require('fs').readFileSync(0,'utf8');
-    try { process.stdout.write(JSON.parse(d).org || ''); } catch(e) {}
-  ")
-fi
+
+AUTH_PROVIDER=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
+  const d = require('fs').readFileSync(0,'utf8');
+  try { process.stdout.write(JSON.parse(d).authProvider || ''); } catch(e) {}
+")
+
 echo "org=${ORG:-NOT SET}"
+echo "authProvider=${AUTH_PROVIDER:-NOT SET}"
 ```
 
 **If `ORG` is empty**, ask the user:
@@ -112,27 +105,62 @@ if echo "$URL" | grep -q '\.aem\.page\|\.aem\.live'; then
 fi
 ```
 
-**Do NOT proceed until org is available.**
+**If `AUTH_PROVIDER` is empty**, ask the user for their content source:
+
+> "What is your project's content source?
+> 1. SharePoint
+> 2. Google Drive
+> 3. Document Authoring (DA)
+> 4. Crosswalk
+>
+> Please enter 1/2/3/4."
+
+Map the response:
+- 1 (SharePoint) → `AUTH_PROVIDER=microsoft`
+- 2 (Google Drive) → `AUTH_PROVIDER=google`
+- 3 (DA) → `AUTH_PROVIDER=adobe`
+- 4 (Crosswalk) → `AUTH_PROVIDER=adobe`
+
+Save both values to config:
+
+```bash
+node -e "
+  const fs = require('fs');
+  let c = {};
+  try { c = JSON.parse(fs.readFileSync('.claude-plugin/project-config.json', 'utf8')); } catch(e) {}
+  c.org = '${ORG}';
+  c.authProvider = '${AUTH_PROVIDER}';
+  fs.writeFileSync('.claude-plugin/project-config.json', JSON.stringify(c, null, 2));
+"
+```
+
+**Do NOT proceed until both org and auth provider are available.**
 
 ### Step 3: Capture Token via Playwright
 
-Playwright opens browser to `admin.hlx.page/login/{org}` which routes to the correct identity provider based on the org's configuration. After login completes, the token is stored as the `auth_token` cookie on `admin.hlx.page`. Playwright reads this cookie, saves the token to disk, then closes the browser automatically.
+The `/login/{org}` endpoint does NOT auto-redirect — it returns a JSON with multiple provider links. Instead, navigate directly to `https://admin.hlx.page/auth/{provider}` which redirects to the correct identity provider login page.
+
+| Content Source | Auth Provider | Login URL |
+|---|---|---|
+| SharePoint | microsoft | `https://admin.hlx.page/auth/microsoft` |
+| Google Drive | google | `https://admin.hlx.page/auth/google` |
+| DA | adobe | `https://admin.hlx.page/auth/adobe` |
+| Crosswalk | adobe | `https://admin.hlx.page/auth/adobe` |
+
+After login completes, the token is stored as the `auth_token` cookie on `admin.hlx.page`. Playwright reads this cookie, saves it to the project config, then closes the browser automatically.
 
 ```bash
-mkdir -p "${HOME}/.aem"
-
 node -e "
 const fs = require('fs');
-const path = require('path');
 const { chromium } = require('playwright');
 
-const TOKEN_PATH = path.join(process.env.HOME, '.aem', 'ims-token.json');
-const ORG = '${ORG}';
-
-const loginUrl = 'https://admin.hlx.page/login/' + ORG;
+const CONFIG_PATH = '.claude-plugin/project-config.json';
+const AUTH_PROVIDER = '${AUTH_PROVIDER}';
+const loginUrl = 'https://admin.hlx.page/auth/' + AUTH_PROVIDER;
 
 (async () => {
   console.log('Opening browser for login...');
+  console.log('Identity provider: ' + AUTH_PROVIDER);
   console.log('URL: ' + loginUrl);
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext();
@@ -153,19 +181,15 @@ const loginUrl = 'https://admin.hlx.page/login/' + ORG;
 
   if (token) {
     const expiresAt = Math.floor(Date.now() / 1000) + 86400;
-    fs.mkdirSync(path.dirname(TOKEN_PATH), { recursive: true });
-    // Merge with existing file to preserve imsToken (DA) if present
-    let existing = {};
-    try { existing = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8')); } catch (e) {}
-    existing.authToken = token;
-    existing.authTokenExpiry = expiresAt;
-    fs.writeFileSync(TOKEN_PATH, JSON.stringify(existing, null, 2));
-    try { fs.chmodSync(TOKEN_PATH, 0o600); } catch (e) {}
+    let config = {};
+    try { config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')); } catch (e) {}
+    config.authToken = token;
+    config.authTokenExpiry = expiresAt;
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
     console.log('Authentication successful');
-    console.log('Token cached at: ' + TOKEN_PATH);
     console.log('Expires: ' + new Date(expiresAt * 1000).toISOString());
   } else {
-    console.error('Login timed out - no auth_token cookie found');
+    console.error('Login timed out - no auth_token cookie found after 5 minutes');
   }
 
   await browser.close();
@@ -178,62 +202,41 @@ const loginUrl = 'https://admin.hlx.page/login/' + ORG;
 
 ## Token Storage
 
-**User-level token cache** — `~/.aem/ims-token.json`:
-
-```json
-{
-  "authToken": "eyJ...",
-  "authTokenExpiry": 1780489855,
-  "imsToken": "eyJ...",
-  "imsTokenExpiry": 1777891272
-}
-```
-
-| Field | Description | Used by |
-|-------|-------------|---------|
-| `authToken` | Token from `admin.hlx.page/login` | All `admin.hlx.page` operations (`x-auth-token` header) |
-| `authTokenExpiry` | Unix timestamp when authToken expires | |
-| `imsToken` | Adobe IMS OAuth token (DA only) | `admin.da.live` operations (Bearer auth) |
-| `imsTokenExpiry` | Unix timestamp when imsToken expires | |
-
-Shared across every project on this machine. File is written with `0600` permissions.
-
-**Project-level config** — `.claude-plugin/project-config.json` (per-project, gitignored):
+Stored in `.claude-plugin/project-config.json` (project-level, gitignored):
 
 ```json
 {
   "org": "myorg",
-  "site": "mysite"
+  "contentSource": "sharepoint",
+  "authProvider": "microsoft",
+  "authToken": "eyJ...",
+  "authTokenExpiry": 1780489855
 }
 ```
 
-Holds only project context. **No token fields.**
+| Field | Description |
+|-------|-------------|
+| `org` | Config Service organization name |
+| `contentSource` | Content source: `sharepoint`, `google`, `da`, `crosswalk` |
+| `authProvider` | Identity provider: `microsoft`, `google`, `adobe` |
+| `authToken` | Token from `auth_token` cookie after login |
+| `authTokenExpiry` | Unix timestamp when token expires |
 
 ---
 
 ## Using the Token
 
 ```bash
-# For admin.hlx.page operations (all content sources)
-AUTH_TOKEN=$(node -e "
-  const fs = require('fs');
-  try {
-    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    process.stdout.write(t.authToken || '');
-  } catch (e) {}
+# Read token from project config
+AUTH_TOKEN=$(cat .claude-plugin/project-config.json | node -e "
+  const d = require('fs').readFileSync(0,'utf8');
+  process.stdout.write(JSON.parse(d).authToken || '');
 ")
+
+# All APIs use the same header
 curl -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/status/{org}/{site}/main/"
 curl -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/config/{org}/sites.json"
-
-# For admin.da.live operations (DA content only, requires separate IMS login)
-IMS_TOKEN=$(node -e "
-  const fs = require('fs');
-  try {
-    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    process.stdout.write(t.imsToken || '');
-  } catch (e) {}
-")
-curl -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.da.live/list/{org}/{site}"
+curl -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.da.live/list/{org}/{site}"
 ```
 
 ---
@@ -244,7 +247,7 @@ curl -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.da.live/list/{org}/{
 |-------|----------|
 | `npx playwright` not found | Run `npm install -g playwright` |
 | Browser doesn't open | Run `npx playwright install chromium` |
-| Login page doesn't load | Check network connectivity |
+| Login page doesn't redirect | Check `authProvider` is correct for your content source |
 | Token not captured | Ensure login completed before closing browser |
 | 401 after login | Token expired, re-authenticate |
 | 403 on API | User lacks permission for that org/site |
@@ -256,5 +259,5 @@ curl -H "Authorization: Bearer ${IMS_TOKEN}" "https://admin.da.live/list/{org}/{
 Called by: `ops`, `handover-admin`, `handover-author`, `handover-developer`, `handover`
 
 ```
-Skill({ skill: "project-management:auth" })
+Skill({ skill: "aem-project-management:auth" })
 ```

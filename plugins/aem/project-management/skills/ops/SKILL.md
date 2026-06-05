@@ -155,7 +155,7 @@ echo "auth=${AUTH_TOKEN:+set}"
 **If `AUTH_TOKEN` is empty**, invoke the auth skill BEFORE proceeding:
 
 ```
-Skill({ skill: "project-management:auth" })
+Skill({ skill: "aem-project-management:auth" })
 ```
 
 **IMPORTANT:** Do NOT skip this step. Do NOT attempt any API calls without a valid token. Use `-H "x-auth-token: ${AUTH_TOKEN}"` header for all `admin.hlx.page` API calls.
@@ -589,7 +589,7 @@ When API returns an error, explain the cause and how to fix it:
 | HTTP Code | Cause | Tell User | Fix |
 |-----------|-------|-----------|-----|
 | **400** | Malformed request | "The request format is invalid. Check the path or payload syntax." | Review path format, ensure JSON/YAML is valid |
-| **401** | Token expired or missing | "Your session has expired. You need to log in again." | Run `Skill({ skill: "project-management:auth" })` |
+| **401** | Token expired or missing | "Your session has expired. You need to log in again." | Run `Skill({ skill: "aem-project-management:auth" })` |
 | **403** | Insufficient permissions | Show actual API error message. If none, say: "You don't have permission for this operation." | Contact site admin to grant access |
 | **404** (on path) | Content doesn't exist | "The path '{path}' was not found. Check if it exists in your content source." | Verify path spelling, check SharePoint/Drive |
 | **404** (on org/site) | Org or site not configured | "The organization '{org}' or site '{site}' is not found. It may not be onboarded to Admin Service." | Verify org/site names, contact Adobe support if new project |

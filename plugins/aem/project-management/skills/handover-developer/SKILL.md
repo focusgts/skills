@@ -227,7 +227,7 @@ fi
 **If `AUTH_REQUIRED`**, invoke the auth skill before proceeding:
 
 ```
-Skill({ skill: "project-management:auth" })
+Skill({ skill: "aem-project-management:auth" })
 ```
 
 Then fetch sites list:
@@ -811,7 +811,7 @@ npm run lint
 2. **IMMEDIATELY after saving the markdown**, invoke the PDF conversion skill:
 
    ```
-   Skill({ skill: "project-management:whitepaper", args: "project-guides/DEVELOPER-GUIDE.md project-guides/DEVELOPER-GUIDE.pdf" })
+   Skill({ skill: "aem-project-management:whitepaper", args: "project-guides/DEVELOPER-GUIDE.md project-guides/DEVELOPER-GUIDE.pdf" })
    ```
 
 3. Wait for PDF generation to complete (whitepaper skill auto-cleans source files)

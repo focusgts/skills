@@ -107,21 +107,39 @@ cat .claude-plugin/project-config.json 2>/dev/null | node -e "
 "
 ```
 
-#### 1.5.2 Prompt for Organization Name (If Not Saved)
+#### 1.5.2 Prompt for Organization Name and Content Source (If Not Saved)
 
 **If no org name is saved**, you MUST pause and ask the user directly:
 
-> "What is your Config Service organization name? This is the `{org}` part of your Edge Delivery Services URLs (e.g., `https://main--site--{org}.aem.page`). The org name may differ from your GitHub organization."
+> "What is your Config Service organization name? This is the `{org}` part of your Edge Delivery Services URLs (e.g., `https://main--site--{org}.aem.page`). The org name may differ from your GitHub organization.
+>
+> Also, what is your project's content source?
+> 1. SharePoint
+> 2. Google Drive
+> 3. Document Authoring (DA)
+> 4. Crosswalk
+>
+> Please provide the org name and enter 1/2/3/4 for the content source."
 
 **IMPORTANT RULES:**
 - **DO NOT use `AskUserQuestion` with predefined options** — ask as a plain text question
 - **Organization name is MANDATORY** — do not offer a "skip" option
-- **Wait for user to type the org name** before proceeding
-- If user doesn't provide a valid org name, ask again
+- **Content source is MANDATORY** — needed to determine the correct identity provider for authentication
+- **Wait for user to provide both values** before proceeding
+- If user doesn't provide a valid org name or content source, ask again
 
-#### 1.5.3 Save Organization Name
+**Content source to identity provider mapping:**
 
-Once you have the org name, save it so sub-skills can use it:
+| Content Source | Identity Provider | Auth URL |
+|---|---|---|
+| 1. SharePoint | Microsoft | `https://admin.hlx.page/auth/microsoft` |
+| 2. Google Drive | Google | `https://admin.hlx.page/auth/google` |
+| 3. DA (Document Authoring) | Adobe | `https://admin.hlx.page/auth/adobe` |
+| 4. Crosswalk | Adobe | `https://admin.hlx.page/auth/adobe` |
+
+#### 1.5.3 Save Organization Name and Content Source
+
+Once you have both values, save them so sub-skills can use them:
 
 ```bash
 # Create config directory if needed
@@ -129,34 +147,35 @@ mkdir -p .claude-plugin
 # Ensure .claude-plugin is in .gitignore (contains project config)
 grep -qxF '.claude-plugin/' .gitignore 2>/dev/null || echo '.claude-plugin/' >> .gitignore
 
-# Save org name to config file
+# Save org name and content source to config file
+# contentSource values: "sharepoint", "google", "da", "crosswalk"
+# authProvider values: "microsoft", "google", "adobe"
 # If "All" was selected, include allGuides flag to skip step 0 in sub-skills
-echo '{"org": "{ORG_NAME}"}' > .claude-plugin/project-config.json
+echo '{"org": "{ORG_NAME}", "contentSource": "{CONTENT_SOURCE}", "authProvider": "{AUTH_PROVIDER}"}' > .claude-plugin/project-config.json
 # OR if "All (Recommended)" was selected:
-echo '{"org": "{ORG_NAME}", "allGuides": true}' > .claude-plugin/project-config.json
+echo '{"org": "{ORG_NAME}", "contentSource": "{CONTENT_SOURCE}", "authProvider": "{AUTH_PROVIDER}", "allGuides": true}' > .claude-plugin/project-config.json
 ```
 
 **Note:** Include `"allGuides": true` ONLY when user selected "All (Recommended)". This signals sub-skills to skip step 0 validation (orchestrator already validated).
 
-Replace `{ORG_NAME}` with the actual organization name provided by the user.
+Replace `{ORG_NAME}` with the actual organization name, `{CONTENT_SOURCE}` with one of `sharepoint|google|da|crosswalk`, and `{AUTH_PROVIDER}` with the mapped provider (`microsoft|google|adobe`).
 
-**Why this matters:** The organization name is required by the Helix Admin API to determine if the project is repoless (multi-site). By gathering it once in the orchestrator, sub-skills running in parallel don't each need to prompt the user separately.
+**Why this matters:** The organization name is required by the Helix Admin API to determine if the project is repoless (multi-site). The content source determines which identity provider to use during authentication. By gathering both once in the orchestrator, sub-skills running in parallel don't each need to prompt the user separately.
 
 ### Step 1.6: Authenticate with Edge Delivery Services
 
-**AFTER saving the organization name, authenticate to obtain an IMS token.**
+**AFTER saving the organization name and content source, authenticate to obtain an auth token.**
 
 #### 1.6.1 Check for Existing Auth Token
 
 ```bash
-AUTH_TOKEN=$(node -e "
-  const fs = require('fs');
+AUTH_TOKEN=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
+  const d = require('fs').readFileSync(0,'utf8');
   try {
-    const t = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ims-token.json', 'utf8'));
-    if (t.authToken && t.authTokenExpiry > Math.floor(Date.now()/1000) + 60) {
-      process.stdout.write(t.authToken);
-    }
-  } catch (e) {}
+    const c = JSON.parse(d);
+    const now = Math.floor(Date.now()/1000);
+    if (c.authToken && c.authTokenExpiry > now + 60) process.stdout.write(c.authToken);
+  } catch(e) {}
 ")
 
 if [ -n "$AUTH_TOKEN" ]; then
@@ -171,16 +190,41 @@ fi
 If no valid token exists, invoke the auth skill:
 
 ```
-Skill({ skill: "project-management:auth" })
+Skill({ skill: "aem-project-management:auth" })
 ```
 
 This will:
-1. Open a browser for login
-2. Capture the OAuth token automatically
-3. Save token to `~/.aem/ims-token.json` (user-level, shared across projects)
-4. Auto-close the browser when complete
+1. Read `authProvider` from `.claude-plugin/project-config.json` to determine identity provider
+2. Open a browser at `https://admin.hlx.page/auth/{provider}` (Microsoft, Google, or Adobe)
+3. Capture the `auth_token` cookie after login completes
+4. Save token to `.claude-plugin/project-config.json` (project-level)
+5. Auto-close the browser when complete
 
 **Why authenticate in orchestrator:** By authenticating once here, all sub-skills running in parallel can use the saved token without each prompting for login separately.
+
+### Step 1.7: Validate Organization Name
+
+**AFTER authentication succeeds, verify the org name by hitting the Config Service.**
+
+```bash
+AUTH_TOKEN=$(cat .claude-plugin/project-config.json | node -e "
+  const d = require('fs').readFileSync(0,'utf8');
+  process.stdout.write(JSON.parse(d).authToken || '');
+")
+ORG=$(cat .claude-plugin/project-config.json | node -e "
+  const d = require('fs').readFileSync(0,'utf8');
+  process.stdout.write(JSON.parse(d).org || '');
+")
+curl -s -w "\nHTTP: %{http_code}" -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/config/${ORG}/sites.json"
+```
+
+**If HTTP 200:** Org is valid. Proceed to Step 2.
+
+**If HTTP 403 or non-200:** The org name is likely incorrect. Respond to the user:
+
+> "Unable to verify organization '{org}' (HTTP 403). Please check the spelling and try again. The org name is the `{org}` part of your site URL: `https://main--site--{org}.aem.page`. Please enter the correct org name."
+
+Then update the org in `.claude-plugin/project-config.json` with the corrected value and **retry this validation step**. Loop until HTTP 200.
 
 ### Step 2: Invoke Appropriate Skill(s)
 
@@ -189,13 +233,15 @@ Based on user selection:
 | Selection | Action |
 |-----------|--------|
 | **All** | Invoke all three skills **in parallel** (see Step 3) |
-| **Authoring Guide** | `Skill({ skill: "project-management:handover-author" })` |
-| **Developer Guide** | `Skill({ skill: "project-management:handover-developer" })` |
-| **Admin Guide** | `Skill({ skill: "project-management:handover-admin" })` |
+| **Authoring Guide** | `Skill({ skill: "aem-project-management:handover-author" })` |
+| **Developer Guide** | `Skill({ skill: "aem-project-management:handover-developer" })` |
+| **Admin Guide** | `Skill({ skill: "aem-project-management:handover-admin" })` |
+
+**For single-guide selections**, invoke the skill directly from the main conversation (not via Agent) so permission prompts reach the user.
 
 ### Step 3: For "All" Selection
 
-**Execute all three guides in PARALLEL with streaming progress updates.**
+**Execute all three guides in PARALLEL using Agent tool with inline instructions.**
 
 **IMPORTANT:** Provide immediate feedback to user before starting parallel execution:
 
@@ -208,32 +254,43 @@ Based on user selection:
 You'll see progress updates as each guide moves through its phases."
 ```
 
-**Launch all three skills simultaneously using parallel Agent tool calls (foreground mode):**
+**Launch all three agents simultaneously in a SINGLE message (foreground mode).**
 
-In a SINGLE message, invoke three Agent tools in parallel. Foreground agents have full tool permissions and run concurrently:
+**CRITICAL RULES:**
+- Do NOT use `run_in_background: true` — agents MUST run in foreground so permission prompts reach the user
+- Do NOT tell agents to invoke the Skill tool — instead, tell each agent to **read the sub-skill SKILL.md file and follow its instructions directly** using only Bash, Read, and Write tools
 
 ```javascript
 // All three in ONE message - runs in parallel with full permissions
 Agent({
   description: "Generate authoring guide",
-  prompt: "Invoke skill project-management:handover-author to generate the authoring guide PDF. Show progress as you complete each phase."
+  prompt: "You are generating an authoring guide for an AEM Edge Delivery Services project at {PROJECT_ROOT}. Read the skill instructions at {PLUGIN_ROOT}/skills/handover-author/SKILL.md and follow them to generate the guide. The project config is at .claude-plugin/project-config.json (org, authToken, allGuides are already set — skip Phase 0 and authentication). Start from Phase 1. For PDF conversion, read {PLUGIN_ROOT}/skills/whitepaper/SKILL.md and follow its instructions. Do NOT use the Skill tool — execute all steps directly with Bash, Read, and Write tools."
 })
 
 Agent({
   description: "Generate developer guide",
-  prompt: "Invoke skill project-management:handover-developer to generate the developer guide PDF. Show progress as you complete each phase."
+  prompt: "You are generating a developer guide for an AEM Edge Delivery Services project at {PROJECT_ROOT}. Read the skill instructions at {PLUGIN_ROOT}/skills/handover-developer/SKILL.md and follow them to generate the guide. The project config is at .claude-plugin/project-config.json (org, authToken, allGuides are already set — skip Phase 0 and authentication). Start from Phase 1. For PDF conversion, read {PLUGIN_ROOT}/skills/whitepaper/SKILL.md and follow its instructions. Do NOT use the Skill tool — execute all steps directly with Bash, Read, and Write tools."
 })
 
 Agent({
   description: "Generate admin guide",
-  prompt: "Invoke skill project-management:handover-admin to generate the admin guide PDF. Show progress as you complete each phase."
+  prompt: "You are generating an admin guide for an AEM Edge Delivery Services project at {PROJECT_ROOT}. Read the skill instructions at {PLUGIN_ROOT}/skills/handover-admin/SKILL.md and follow them to generate the guide. The project config is at .claude-plugin/project-config.json (org, authToken, allGuides are already set — skip Phase 0 and authentication). Start from Phase 1. For PDF conversion, read {PLUGIN_ROOT}/skills/whitepaper/SKILL.md and follow its instructions. Do NOT use the Skill tool — execute all steps directly with Bash, Read, and Write tools."
 })
 ```
 
-**Why foreground agents:**
-- Run all 3 in parallel (~3x faster than sequential)
-- Full tool permissions (Bash, Read, Write, Glob, Skill)
-- Progress updates stream as each agent works
+**Replace `{PROJECT_ROOT}` with the actual project root path** (output of `git rev-parse --show-toplevel`).
+
+**Replace `{PLUGIN_ROOT}` with the plugin root path.** Determine it with:
+```bash
+PLUGIN_ROOT=$([ -d ".claude/plugins/aem-project-management" ] && echo ".claude/plugins/aem-project-management" || echo "$CLAUDE_PLUGIN_ROOT")
+```
+If neither resolves, use the skill source at the path shown in the skill's "Base directory" header (strip `/skills/{name}` to get the plugin root).
+
+**Why this approach:**
+- Background agents cannot receive permission prompts for Skill tool calls
+- Reading the SKILL.md and executing its instructions directly uses only Bash/Read/Write tools which are pre-authorized
+- Agents get the same instructions they would from the Skill tool, just loaded via Read instead
+- Runs all 3 in parallel (~3x faster than sequential)
 
 **When all three complete, report final summary:**
 
@@ -307,8 +364,8 @@ project-guides/ADMIN-GUIDE.md
 ## Related Skills
 
 This skill invokes:
-- `project-management:handover-author` - Author/content manager guide (generates PDF immediately)
-- `project-management:handover-developer` - Developer technical guide (generates PDF immediately)
-- `project-management:handover-admin` - Admin operations guide (generates PDF immediately)
-- `project-management:whitepaper` - PDF generation (invoked by each sub-skill after saving markdown)
+- `aem-project-management:handover-author` - Author/content manager guide (generates PDF immediately)
+- `aem-project-management:handover-developer` - Developer technical guide (generates PDF immediately)
+- `aem-project-management:handover-admin` - Admin operations guide (generates PDF immediately)
+- `aem-project-management:whitepaper` - PDF generation (invoked by each sub-skill after saving markdown)
 
