@@ -206,10 +206,11 @@ Skill({ skill: "aem-project-management:auth" })
 ```
 
 This will:
-1. Open a browser for login
-2. Capture the OAuth token automatically
-3. Save token to `~/.aem/ims-token.json` (user-level, shared across projects)
-4. Auto-close the browser when complete
+1. Resolve org + site (from project-config and git remote)
+2. Open browser at `https://admin.hlx.page/login/{org}/{site}/main` (auto-redirects to correct IDP)
+3. Capture the `auth_token` cookie after login completes
+4. Save token to `~/.aem/ims-token.json` (user-level, shared across projects)
+5. Auto-close the browser when complete
 
 ### 0.5.3 Verify Authentication
 

@@ -107,39 +107,41 @@ cat .claude-plugin/project-config.json 2>/dev/null | node -e "
 "
 ```
 
-#### 1.5.2 Prompt for Organization Name and Content Source (If Not Saved)
+#### 1.5.2 Resolve Site Name from Git
+
+```bash
+SITE=$(basename -s .git $(git remote get-url origin 2>/dev/null) 2>/dev/null)
+echo "site=${SITE:-NOT SET}"
+```
+
+#### 1.5.3 Prompt for Organization Name (If Not Saved)
 
 **If no org name is saved**, you MUST pause and ask the user directly:
 
 > "What is your Config Service organization name? This is the `{org}` part of your Edge Delivery Services URLs (e.g., `https://main--site--{org}.aem.page`). The org name may differ from your GitHub organization.
 >
-> Also, what is your project's content source?
-> 1. SharePoint
-> 2. Google Drive
-> 3. Document Authoring (DA)
-> 4. Crosswalk
->
-> Please provide the org name and enter 1/2/3/4 for the content source."
+> You can provide either the org name or a preview/live URL."
 
 **IMPORTANT RULES:**
 - **DO NOT use `AskUserQuestion` with predefined options** — ask as a plain text question
 - **Organization name is MANDATORY** — do not offer a "skip" option
-- **Content source is MANDATORY** — needed to determine the correct identity provider for authentication
-- **Wait for user to provide both values** before proceeding
-- If user doesn't provide a valid org name or content source, ask again
+- **Wait for user to provide org name** before proceeding
+- If user doesn't provide a valid org name, ask again
 
-**Content source to identity provider mapping:**
+**If user provides a URL**, parse org from it:
 
-| Content Source | Identity Provider | Auth URL |
-|---|---|---|
-| 1. SharePoint | Microsoft | `https://admin.hlx.page/auth/microsoft` |
-| 2. Google Drive | Google | `https://admin.hlx.page/auth/google` |
-| 3. DA (Document Authoring) | Adobe | `https://admin.hlx.page/auth/adobe` |
-| 4. Crosswalk | Adobe | `https://admin.hlx.page/auth/adobe` |
+```bash
+URL="$USER_INPUT"
+if echo "$URL" | grep -q '\.aem\.page\|\.aem\.live'; then
+  HOST_PART=$(echo "$URL" | cut -d'/' -f3 | cut -d'.' -f1)
+  ORG=$(echo "$HOST_PART" | awk -F'--' '{print $NF}')
+  echo "Parsed from URL: org=$ORG"
+fi
+```
 
-#### 1.5.3 Save Organization Name and Content Source
+#### 1.5.4 Save Organization Name
 
-Once you have both values, save them so sub-skills can use them:
+Once you have the org name, save it so sub-skills can use it:
 
 ```bash
 # Create config directory if needed
@@ -147,24 +149,22 @@ mkdir -p .claude-plugin
 # Ensure .claude-plugin is in .gitignore (contains project config)
 grep -qxF '.claude-plugin/' .gitignore 2>/dev/null || echo '.claude-plugin/' >> .gitignore
 
-# Save org name and content source to config file
-# contentSource values: "sharepoint", "google", "da", "crosswalk"
-# authProvider values: "microsoft", "google", "adobe"
+# Save org name to config file
 # If "All" was selected, include allGuides flag to skip step 0 in sub-skills
-echo '{"org": "{ORG_NAME}", "contentSource": "{CONTENT_SOURCE}", "authProvider": "{AUTH_PROVIDER}"}' > .claude-plugin/project-config.json
+echo '{"org": "{ORG_NAME}"}' > .claude-plugin/project-config.json
 # OR if "All (Recommended)" was selected:
-echo '{"org": "{ORG_NAME}", "contentSource": "{CONTENT_SOURCE}", "authProvider": "{AUTH_PROVIDER}", "allGuides": true}' > .claude-plugin/project-config.json
+echo '{"org": "{ORG_NAME}", "allGuides": true}' > .claude-plugin/project-config.json
 ```
 
 **Note:** Include `"allGuides": true` ONLY when user selected "All (Recommended)". This signals sub-skills to skip step 0 validation (orchestrator already validated).
 
-Replace `{ORG_NAME}` with the actual organization name, `{CONTENT_SOURCE}` with one of `sharepoint|google|da|crosswalk`, and `{AUTH_PROVIDER}` with the mapped provider (`microsoft|google|adobe`).
+Replace `{ORG_NAME}` with the actual organization name provided by the user.
 
-**Why this matters:** The organization name is required by the Helix Admin API to determine if the project is repoless (multi-site). The content source determines which identity provider to use during authentication. By gathering both once in the orchestrator, sub-skills running in parallel don't each need to prompt the user separately.
+**Why this matters:** The organization name is required by the Helix Admin API to determine if the project is repoless (multi-site). Site name is derived from git. By gathering org once in the orchestrator, sub-skills running in parallel don't each need to prompt the user separately.
 
 ### Step 1.6: Authenticate with Edge Delivery Services
 
-**AFTER saving the organization name and content source, authenticate to obtain an auth token.**
+**AFTER saving the organization name, authenticate to obtain an auth token.**
 
 #### 1.6.1 Check for Existing Auth Token
 
@@ -195,8 +195,8 @@ Skill({ skill: "aem-project-management:auth" })
 ```
 
 This will:
-1. Read `authProvider` from `.claude-plugin/project-config.json` to determine identity provider
-2. Open a browser at `https://admin.hlx.page/auth/{provider}` (Microsoft, Google, or Adobe)
+1. Resolve org from `.claude-plugin/project-config.json` and site from git remote
+2. Open browser at `https://admin.hlx.page/login/{org}/{site}/main` (auto-redirects to correct IDP)
 3. Capture the `auth_token` cookie after login completes
 4. Save token to `~/.aem/ims-token.json` (user-level, shared across projects)
 5. Auto-close the browser when complete

@@ -1,25 +1,26 @@
 ---
 name: auth
-description: Authenticate with AEM Edge Delivery Services. Opens browser for login and captures token. Works for admin.hlx.page, admin.da.live, and Config Service APIs regardless of content source (Document Authoring, SharePoint, or Google Drive).
+description: Authenticate with AEM Edge Delivery Services. Opens browser for login and captures token. Works for admin.hlx.page and Config Service APIs regardless of content source (Document Authoring, SharePoint, or Google Drive).
 license: Apache-2.0
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 metadata:
-  version: "3.0.0"
+  version: "4.0.0"
 ---
 
 # AEM Edge Delivery Services Authentication
 
-Authenticate to obtain a token for all Edge Delivery Services admin operations. Supports all content sources: SharePoint (Microsoft), Google Drive (Google), Document Authoring (Adobe), and Crosswalk (Adobe).
+Authenticate to obtain a token for all Edge Delivery Services admin operations. Auto-detects identity provider from org+site — no content source question needed.
 
 ## Token Usage
 
-The `auth_token` cookie works for all admin APIs:
+The `auth_token` cookie works for admin APIs:
 
 | API | Header | Usage |
 |-----|--------|-------|
 | `admin.hlx.page` | `x-auth-token: ${AUTH_TOKEN}` | Preview, publish, status, code sync, jobs, logs, config |
-| `admin.da.live` | `x-auth-token: ${AUTH_TOKEN}` | DA content operations (list, source, copy, move) |
 | Config Service | `x-auth-token: ${AUTH_TOKEN}` | Sites, config, secrets, API keys, profiles |
+
+> **Note:** `admin.da.live` uses a separate Adobe IMS token with `Authorization: Bearer` header. See the DA-specific login flow in `ops/resources/da.md`.
 
 ## When to Use This Skill
 
@@ -69,49 +70,72 @@ npx playwright --version 2>/dev/null || npm install -g playwright
 npx playwright install chromium 2>/dev/null || true
 ```
 
-### Step 2.5: Resolve Auth Provider
+### Step 2.5: Resolve Org and Site
 
-The login requires the identity provider. Check project config first (set by handover orchestrator), then ask user:
+The auto-login endpoint `/login/{org}/{site}/main` redirects to the correct identity provider automatically — no need to know the content source.
+
+**Resolve org and site from available sources (project-config, ops-config, git remote):**
 
 ```bash
-AUTH_PROVIDER=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
+# Try project-config first (handover context)
+ORG=$(cat .claude-plugin/project-config.json 2>/dev/null | node -e "
   const d = require('fs').readFileSync(0,'utf8');
-  try { process.stdout.write(JSON.parse(d).authProvider || ''); } catch(e) {}
+  try { process.stdout.write(JSON.parse(d).org || ''); } catch(e) {}
 ")
 
-echo "authProvider=${AUTH_PROVIDER:-NOT SET}"
+# Fallback to ops-config (ops context)
+if [ -z "$ORG" ]; then
+  ORG=$(node -e "
+    const fs = require('fs');
+    try {
+      const c = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ops-config.json', 'utf8'));
+      process.stdout.write(c.org || '');
+    } catch(e) {}
+  ")
+fi
+
+# Site: try git remote first, then ops-config
+SITE=$(basename -s .git $(git remote get-url origin 2>/dev/null) 2>/dev/null)
+if [ -z "$SITE" ]; then
+  SITE=$(node -e "
+    const fs = require('fs');
+    try {
+      const c = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ops-config.json', 'utf8'));
+      process.stdout.write(c.site || '');
+    } catch(e) {}
+  ")
+fi
+
+echo "org=${ORG:-NOT SET} site=${SITE:-NOT SET}"
 ```
 
-**If `AUTH_PROVIDER` is empty**, ask the user for their content source:
+**If `ORG` is empty**, ask the user:
 
-> "What is your project's content source?
-> 1. SharePoint
-> 2. Google Drive
-> 3. Document Authoring (DA)
-> 4. Crosswalk
->
-> Please enter 1/2/3/4."
+> "I need your organization name to authenticate. You can provide either:
+> - The org name (the `{org}` in `https://main--site--{org}.aem.page`)
+> - A preview/live URL like `https://main--mysite--myorg.aem.page/`"
 
-Map the response:
-- 1 (SharePoint) → `AUTH_PROVIDER=microsoft`
-- 2 (Google Drive) → `AUTH_PROVIDER=google`
-- 3 (DA) → `AUTH_PROVIDER=adobe`
-- 4 (Crosswalk) → `AUTH_PROVIDER=adobe`
+**If user provides a URL**, parse org and site from it:
 
-**Do NOT proceed until auth provider is available.**
+```bash
+URL="$USER_INPUT"
+if echo "$URL" | grep -q '\.aem\.page\|\.aem\.live'; then
+  HOST_PART=$(echo "$URL" | cut -d'/' -f3 | cut -d'.' -f1)
+  ORG=$(echo "$HOST_PART" | awk -F'--' '{print $NF}')
+  SITE=$(echo "$HOST_PART" | awk -F'--' '{print $(NF-1)}')
+  echo "Parsed from URL: org=$ORG site=$SITE"
+fi
+```
+
+**If `SITE` is still empty** (not in a git repo and no URL provided), ask the user:
+
+> "I also need a site name to auto-detect your login provider. What is your site name? (the `{site}` part of `https://main--{site}--{org}.aem.page`)"
+
+**Do NOT proceed until both org and site are available.**
 
 ### Step 3: Capture Token via Playwright
 
-The `/login/{org}` endpoint does NOT auto-redirect — it returns a JSON with multiple provider links. Instead, navigate directly to `https://admin.hlx.page/auth/{provider}` which redirects to the correct identity provider login page.
-
-| Content Source | Auth Provider | Login URL |
-|---|---|---|
-| SharePoint | microsoft | `https://admin.hlx.page/auth/microsoft` |
-| Google Drive | google | `https://admin.hlx.page/auth/google` |
-| DA | adobe | `https://admin.hlx.page/auth/adobe` |
-| Crosswalk | adobe | `https://admin.hlx.page/auth/adobe` |
-
-After login completes, the token is stored as the `auth_token` cookie on `admin.hlx.page`. Playwright reads this cookie, saves it to `~/.aem/ims-token.json`, then closes the browser automatically.
+The `/login/{org}/{site}/main` endpoint auto-redirects to the correct identity provider based on the project's configuration. Playwright follows the redirect, user logs in, and the `auth_token` cookie is captured automatically.
 
 ```bash
 mkdir -p "${HOME}/.aem"
@@ -122,12 +146,12 @@ const path = require('path');
 const { chromium } = require('playwright');
 
 const TOKEN_PATH = path.join(process.env.HOME, '.aem', 'ims-token.json');
-const AUTH_PROVIDER = '${AUTH_PROVIDER}';
-const loginUrl = 'https://admin.hlx.page/auth/' + AUTH_PROVIDER;
+const ORG = '${ORG}';
+const SITE = '${SITE}';
+const loginUrl = 'https://admin.hlx.page/login/' + ORG + '/' + SITE + '/main';
 
 (async () => {
   console.log('Opening browser for login...');
-  console.log('Identity provider: ' + AUTH_PROVIDER);
   console.log('URL: ' + loginUrl);
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext();
@@ -187,18 +211,6 @@ const loginUrl = 'https://admin.hlx.page/auth/' + AUTH_PROVIDER;
 
 Shared across every project on this machine. File is written with `0600` permissions.
 
-**Project-level config** — `.claude-plugin/project-config.json` (handover only, gitignored):
-
-```json
-{
-  "org": "myorg",
-  "contentSource": "sharepoint",
-  "authProvider": "microsoft"
-}
-```
-
-Holds project context for handover guides. **No token fields.**
-
 ---
 
 ## Using the Token
@@ -213,10 +225,9 @@ AUTH_TOKEN=$(node -e "
   } catch (e) {}
 ")
 
-# All APIs use the same header
+# admin.hlx.page and Config Service use the same header
 curl -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/status/{org}/{site}/main/"
 curl -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.hlx.page/config/{org}/sites.json"
-curl -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.da.live/list/{org}/{site}"
 ```
 
 ---
@@ -227,7 +238,7 @@ curl -H "x-auth-token: ${AUTH_TOKEN}" "https://admin.da.live/list/{org}/{site}"
 |-------|----------|
 | `npx playwright` not found | Run `npm install -g playwright` |
 | Browser doesn't open | Run `npx playwright install chromium` |
-| Login page doesn't redirect | Check `authProvider` is correct for your content source |
+| Login page doesn't redirect | Verify org and site names are correct |
 | Token not captured | Ensure login completed before closing browser |
 | 401 after login | Token expired, re-authenticate |
 | 403 on API | User lacks permission for that org/site |

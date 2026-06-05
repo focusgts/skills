@@ -81,35 +81,50 @@ The agent executing these commands should adapt syntax to the user's environment
 
 Analyze user request and load the appropriate resource module.
 
-### Step 0: Get Organization Name (REQUIRED FIRST)
+### Step 0: Get Organization and Site (REQUIRED FIRST)
 
-**Before ANY operation**, check `~/.aem/ops-config.json` for a previously stored org:
+**Before ANY operation**, check `~/.aem/ops-config.json` for previously stored org and site:
 
 ```bash
-ORG=$(node -e "
+eval $(node -e "
   const fs = require('fs');
   try {
     const c = JSON.parse(fs.readFileSync(process.env.HOME + '/.aem/ops-config.json', 'utf8'));
-    process.stdout.write(c.org || '');
-  } catch(e) {}
+    console.log('ORG=' + JSON.stringify(c.org || ''));
+    console.log('SITE=' + JSON.stringify(c.site || ''));
+  } catch(e) {
+    console.log('ORG='); console.log('SITE=');
+  }
 ")
-echo "org=${ORG:-NOT SET}"
+echo "org=${ORG:-NOT SET} site=${SITE:-NOT SET}"
 ```
 
-**If `ORG` is set**, confirm with the user:
+**If both `ORG` and `SITE` are set**, confirm with the user:
 
-> "Previously used org: `{ORG}`. Do you want to continue with this org, or use a different one?"
+> "Previously used: org=`{ORG}`, site=`{SITE}`. Do you want to continue with these? If not, provide a different site URL (e.g., `https://main--mysite--myorg.aem.page/`)."
 
 - If user confirms → proceed
-- If user provides a different org → save the new value
+- If user provides a URL → parse org and site from it, save the new values
 
-**If `ORG` is empty**, ask the user:
+**If `ORG` or `SITE` is empty**, ask the user:
 
-> "What is your Config Service organization name? This is the `{org}` part of your Edge Delivery Services URLs (e.g., `https://main--site--{org}.aem.page`).
->
-> **Note:** The org name may differ from your GitHub organization, especially in repoless multi-site setups."
+> "Enter the site preview/live URL for which you want to perform ops (e.g., `https://main--mysite--myorg.aem.page/`)."
 
-**Save org to `~/.aem/ops-config.json`:**
+**Parse org and site from the URL:**
+
+```bash
+URL="$USER_INPUT"
+if echo "$URL" | grep -q '\.aem\.page\|\.aem\.live'; then
+  HOST_PART=$(echo "$URL" | cut -d'/' -f3 | cut -d'.' -f1)
+  ORG=$(echo "$HOST_PART" | awk -F'--' '{print $NF}')
+  SITE=$(echo "$HOST_PART" | awk -F'--' '{print $(NF-1)}')
+  echo "Parsed from URL: org=$ORG site=$SITE"
+fi
+```
+
+If the user provides something other than a valid `.aem.page` or `.aem.live` URL, ask again.
+
+**Save org and site to `~/.aem/ops-config.json`:**
 
 ```bash
 mkdir -p "${HOME}/.aem"
@@ -118,22 +133,23 @@ node -e "
   const p = process.env.HOME + '/.aem/ops-config.json';
   let c = {};
   try { c = JSON.parse(fs.readFileSync(p, 'utf8')); } catch(e) {}
-  c.org = '{ORG_NAME}';
+  c.org = '${ORG}';
+  c.site = '${SITE}';
   fs.writeFileSync(p, JSON.stringify(c, null, 2));
 "
 ```
 
-**STRICTLY FORBIDDEN - Do NOT attempt any of these to get org name:**
+**STRICTLY FORBIDDEN - Do NOT attempt any of these to get org/site:**
 - `git remote -v` - GitHub org often differs from Config Service org
 - Reading `fstab.yaml` - Does not contain org name
 - Inferring from folder/repo names - Unreliable
 - Any other inference method
 
-**ONLY use the org name from:**
+**ONLY use org/site from:**
 - Saved config (`~/.aem/ops-config.json`)
-- Direct user input when prompted
+- Direct user input (URL or explicit values)
 
-**Do NOT proceed until org is confirmed.**
+**Do NOT proceed until both org and site are confirmed.**
 
 ### Step 1: Authenticate (REQUIRED)
 
