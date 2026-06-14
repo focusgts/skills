@@ -33,6 +33,12 @@
 # Adobe App Builder
 /plugins/app-builder                                   @pkumargaddam
 
+# Adobe Analytics (AA MCP)
+/plugins/adobe-analytics/                              @rmunix
+
+# Customer Journey Analytics (CJA MCP)
+/plugins/adobe-cja/                                    @rmunix
+
 # Adobe for creativity
 /plugins/creative-cloud/adobe-for-creativity           @bossjones @njampani123 @solimant
 
