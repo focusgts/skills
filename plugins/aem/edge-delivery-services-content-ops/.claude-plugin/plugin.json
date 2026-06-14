@@ -1,6 +1,6 @@
 {
   "name": "aem-eds-content-ops",
-  "description": "Content operations skills for AEM Edge Delivery Services: page auditing, AI search optimization (GEO), WCAG accessibility fixes, bulk metadata management, and content diffing. Complements the EDS development skills with operational tooling for content teams.",
+  "description": "Content operations skills for AEM Edge Delivery Services: page auditing, SEO optimization, AI search (GEO), WCAG accessibility, bulk metadata, structured data, sitemap validation, and content diffing. Complements the EDS development skills with operational tooling for content teams.",
   "version": "1.0.0",
   "author": {
     "name": "FocusGTS"
