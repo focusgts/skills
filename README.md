@@ -277,6 +277,12 @@ Development, customization, testing, and deployment skills for Adobe App Builder
 | `appbuilder-e2e-testing`       | Playwright browser E2E tests for ExC Shell SPAs and AEM extensions                        |
 | `appbuilder-cicd-pipeline`     | Set up CI/CD pipelines for GitHub Actions, Azure DevOps, and GitLab CI                    |
 
+### AEM as a Cloud Service — Code Assessment
+
+**`code-assessment`** (under `plugins/aem/cloud-service/skills/`) detects and fixes AEM CS code-quality issues entirely against the local workspace — no external services. Name the files to fix or ask it to scan the repo; it plans, applies surgical edits (git branch or in-place), and verifies with `mvn compile`. Each issue type is a self-contained expert skill.
+
+See `plugins/aem/cloud-service/skills/code-assessment/SKILL.md` for routing and classification. **Installing the AEM as a Cloud Service plugin** (`aem-cloud-service`) includes this skill.
+
 ### Creativity & Design
 
 | Skill                              | Description                                                                                                           |
