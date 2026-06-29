@@ -2,7 +2,7 @@
 
 ## What Is OpTel Explorer?
 
-Adobe rebranded RUM (Real User Monitoring) Explorer to Operational Telemetry Explorer in early 2025. The tool is available at `aem.live/tools/rum/explorer.html` and requires a domain key, which is provisioned when a site is onboarded to EDS. OpTel captures data from real user sessions — not synthetic tests — by injecting a lightweight sampling script into every EDS page. The data includes Core Web Vitals (LCP, CLS, INP), page view counts, traffic referrers, device types (mobile, desktop, tablet), browser types, geographic regions, and engagement signals.
+Adobe rebranded RUM (Real User Monitoring) Explorer to Operational Telemetry Explorer in early 2025. The tool is available at `www.aem.live/tools/oversight/explorer.html` and requires a domain key (passed as the `?domainkey=` query parameter), which is provisioned when a site is onboarded to EDS. OpTel captures data from real user sessions — not synthetic tests — by injecting a lightweight sampling script into every EDS page. The data includes Core Web Vitals (LCP, CLS, INP), page view counts, traffic referrers, device types (mobile, desktop, tablet), browser types, geographic regions, and engagement signals.
 
 ## How OpTel Sampling Works
 
@@ -43,7 +43,7 @@ LCP is typically the most impactful metric to fix first.
 CLS problems on EDS sites have distinct, recognizable patterns.
 - **Distribution**: Percentage of page loads with CLS > 0.1.
 - **Worst pages**: Top N URLs by p75 CLS (`cwvCLS`).
-- **Common EDS causes**: Images without `width`/`height` attributes from `createOptimizedPicture()` (tracked as aem-lib issue #201, fixed in recent versions), late-loading consent banners, font swaps without `size-adjust`, or blocks that restructure their DOM during JavaScript decoration.
+- **Common EDS causes**: Images without `width`/`height` attributes (`createOptimizedPicture()` does not set image dimensions on the images it generates), late-loading consent banners, font swaps without `size-adjust`, or blocks that restructure their DOM during JavaScript decoration.
 
 ### INP — what to look for
 INP measures responsiveness to user interaction.

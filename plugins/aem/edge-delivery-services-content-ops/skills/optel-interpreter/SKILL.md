@@ -55,7 +55,7 @@ Before starting, create a checklist of all steps to track progress:
 
 Determine how the user is providing OpTel data:
 
-1. **OpTel Explorer UI** — Screenshots or values from `aem.live/tools/rum/explorer.html`. Ask for the domain, date range, and which views they are looking at.
+1. **OpTel Explorer UI** — Screenshots or values from `www.aem.live/tools/oversight/explorer.html`. Ask for the domain, date range, and which views they are looking at.
 2. **Exported CSV/JSON** — Ask them to share the file or paste the contents.
 3. **RUM API** — The user has queried the OpTel API directly (see below). Ask for the response payload.
 
@@ -63,21 +63,30 @@ Record the **domain**, **date range**, and **sampling rate** (if known). If the 
 
 ### Fetching OpTel Data via the RUM API
 
-```javascript
-// Fetch CWV summary for a domain over the last 7 days
-const domain = 'www.example.com';
-const apiUrl = `https://rum.hlx.page/bundles?domain=${domain}&interval=7&granularity=hourly`;
+The RUM Bundler API is path-based — `/bundles/{domain}/{year}/{month}/{day}` (drop the day for a
+whole month, add `/{hour}` for a single hour). The domain key is passed as the `?domainkey=` query
+parameter, not an `Authorization` header.
 
-const response = await fetch(apiUrl, {
-  headers: { 'Authorization': `Bearer ${domainKey}` },
-});
+```javascript
+// Fetch one day of RUM bundles for a domain.
+const domain = 'www.example.com';
+const apiUrl = `https://rum.hlx.page/bundles/${domain}/2026/06/28?domainkey=${domainKey}`;
+
+const response = await fetch(apiUrl);
 const data = await response.json();
 
-// data.rumBundles is an array of per-page bundles. Each bundle has fields:
-//   url, pageViews, cwvLCP (ms), cwvCLS (unitless), cwvINP (ms), device, browser
-const bundles = data.rumBundles;
-console.log(`Total bundles: ${bundles.length}`);
+// data.rumBundles is an array of session bundles. Each bundle has fields:
+//   id, time, url, userAgent, weight (sampling weight — multiply to estimate real traffic),
+//   and events[] (each event has a checkpoint, e.g. cwv-lcp / cwv-cls / cwv-inp, plus a value).
+// CWV are NOT top-level fields — derive per-page metrics by reading the cwv-* checkpoints from
+// events, and use weight as the traffic stand-in.
+const rumBundles = data.rumBundles;
+console.log(`Total bundles: ${rumBundles.length}`);
 ```
+
+The helper functions in the steps below operate on a *normalized* array — one record per page with
+`url`, `cwvLCP`, `cwvCLS`, `cwvINP`, and `pageViews` (page views derived by summing event weights)
+— that you reduce from the raw `rumBundles` above.
 
 ---
 
